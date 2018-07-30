@@ -59,11 +59,16 @@ def train_model():
     setup_model_for_training(model, weights_file, output_dir)
     training_stats = TrainingStats(model)
     CHECKPOINT_PERIOD = int(cfg.TRAIN.SNAPSHOT_ITERS / cfg.NUM_GPUS)
+    error_count = 0
 
     for cur_iter in range(start_iter, cfg.SOLVER.MAX_ITER):
         training_stats.IterTic()
         lr = model.UpdateWorkspaceLr(cur_iter, lr_policy.get_lr_at_iter(cur_iter))
-        workspace.RunNet(model.net.Proto().name)
+        try:
+            workspace.RunNet(model.net.Proto().name)
+        except:
+            error_count += 1
+            logger.warn("Error in iter {}, error count: {}".format(cur_iter, error_count))
         if cur_iter == start_iter:
             nu.print_net(model)
         training_stats.IterToc()
