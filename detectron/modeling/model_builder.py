@@ -121,7 +121,16 @@ def create(model_type_func, train=False, gpu_id=0):
     )
     model.only_build_forward_pass = False
     model.target_gpu_id = gpu_id
-    return get_func(model_type_func)(model)
+    model = get_func(model_type_func)(model)
+    # stop gradient at specified nodes
+    if len(cfg.TRAIN.FREEZE_AT_NODES):
+        blob_references = []
+        for gpu_id in range(cfg.NUM_GPUS):
+            with c2_utils.NamedCudaScope(gpu_id):
+                blob_references += [core.ScopedBlobReference(b) for b in cfg.TRAIN.FREEZE_AT_NODES]
+        for blob_ref in blob_references:
+            model.StopGradient(blob_ref, blob_ref)
+    return model
 
 
 def get_func(func_name):
