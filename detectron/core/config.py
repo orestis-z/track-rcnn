@@ -196,7 +196,7 @@ __C.TRAIN.COPY_WEIGHTS = False
 __C.TRAIN.FREEZE_AT = 2
 
 # Add StopGrad at a specified nodes
-__C.TRAIN.FREEZE_NODES = []
+__C.TRAIN.FREEZE_BLOBS = []
 
 
 # ---------------------------------------------------------------------------- #

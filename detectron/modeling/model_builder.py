@@ -123,12 +123,16 @@ def create(model_type_func, train=False, gpu_id=0):
     model.target_gpu_id = gpu_id
     model = get_func(model_type_func)(model)
     # stop gradient at specified nodes
-    if len(cfg.TRAIN.FREEZE_AT_NODES):
+    if len(cfg.TRAIN.FREEZE_BLOBS):
         blob_references = []
         for gpu_id in range(cfg.NUM_GPUS):
-            with c2_utils.NamedCudaScope(gpu_id):
-                blob_references += [core.ScopedBlobReference(b) for b in cfg.TRAIN.FREEZE_AT_NODES]
+            for blob_name in cfg.TRAIN.FREEZE_BLOBS:
+                try:
+                    blob_references.append(model.net.GetBlobRef('gpu_{}/{}'.format(gpu_id, blob_name)))
+                except KeyError, e:
+                    logger.warn('Failed to freeze blob. {}'.format(e))
         for blob_ref in blob_references:
+            logger.info('Freezing blob. {}'.format(blob_ref))
             model.StopGradient(blob_ref, blob_ref)
     return model
 
