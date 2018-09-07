@@ -224,6 +224,7 @@ class RoIDataLoader(object):
 
     def start(self, prefill=False):
         for w in self._workers + self._enqueuers:
+            w.setDaemon(True)
             w.start()
         if prefill:
             logger.info('Pre-filling mini-batch queue...')
@@ -239,6 +240,9 @@ class RoIDataLoader(object):
                 if self.coordinator.should_stop():
                     self.shutdown()
                     break
+
+    def has_stopped(self):
+        return self.coordinator.should_stop()
 
     def shutdown(self):
         self.coordinator.request_stop()
