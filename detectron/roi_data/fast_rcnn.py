@@ -84,6 +84,11 @@ def get_fast_rcnn_blob_names(is_training=True):
         # 'keypoint_loss_normalizer': optional normalization factor to use if
         # cfg.KRCNN.NORMALIZE_BY_VISIBLE_KEYPOINTS is False.
         blob_names += ['keypoint_loss_normalizer']
+    if is_training and cfg.MODEL.TRACKING_ON:
+        # 'tracking_rois': RoIs sampled for training the tracking prediction
+        # branch. Shape is (#instances, 5) in format (batch_idx, x1, y1, x2,
+        # y2).
+        blob_names += ['tracking_rois']
     if cfg.FPN.FPN_ON and cfg.FPN.MULTILEVEL_ROIS:
         # Support for FPN multi-level rois without bbox reg isn't
         # implemented (... and may never be implemented)
@@ -102,6 +107,10 @@ def get_fast_rcnn_blob_names(is_training=True):
                 for lvl in range(k_min, k_max + 1):
                     blob_names += ['keypoint_rois_fpn' + str(lvl)]
                 blob_names += ['keypoint_rois_idx_restore_int32']
+            if cfg.MODEL.TRACKING_ON:
+                for lvl in range(k_min, k_max + 1):
+                    blob_names += ['tracking_rois_fpn' + str(lvl)]
+                blob_names += ['tracking_rois_idx_restore_int32']
     return blob_names
 
 

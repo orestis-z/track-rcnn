@@ -480,6 +480,9 @@ __C.MODEL.MASK_ON = False
 # keypoints)
 __C.MODEL.KEYPOINTS_ON = False
 
+# Indicates the model makes tracking predictions
+__C.MODEL.TRACKING_ON = False
+
 # Indicates the model's computation terminates with the production of RPN
 # proposals (i.e., it outputs proposals ONLY, no actual object detections)
 __C.MODEL.RPN_ONLY = False
@@ -863,6 +866,31 @@ __C.KRCNN.NORMALIZE_BY_VISIBLE_KEYPOINTS = True
 
 
 # ---------------------------------------------------------------------------- #
+# Track Mask R-CNN options ("TRCNN" = Mask R-CNN with Keypoint support)
+# ---------------------------------------------------------------------------- #
+__C.TRCNN = AttrDict()
+
+# The type of RoI head to use for instance tracking prediction
+# The string must match a function this is imported in modeling.model_builder
+# (e.g., 'keypoint_rcnn_heads.add_roi_pose_head_v1convX')
+__C.TRCNN.ROI_TRACKING_HEAD = b''
+
+# Hidden layer dimension when using an MLP for the RoI track head
+__C.TRCNN.MLP_HEAD_DIM = 256
+
+# Standard ROI XFORM options (see FAST_RCNN or MRCNN options)
+__C.TRCNN.ROI_XFORM_METHOD = b'RoIAlign'
+__C.TRCNN.ROI_XFORM_RESOLUTION = 7
+__C.TRCNN.ROI_XFORM_SAMPLING_RATIO = 0
+
+# Multi-task loss weight to use for keypoints
+# Recommended values:
+#   - use 1.0 if TRCNN.NORMALIZE_BY_VISIBLE_KEYPOINTS is True
+#   - use 4.0 if TRCNN.NORMALIZE_BY_VISIBLE_KEYPOINTS is False
+__C.TRCNN.LOSS_WEIGHT = 1.0
+
+
+# ---------------------------------------------------------------------------- #
 # R-FCN options
 # ---------------------------------------------------------------------------- #
 __C.RFCN = AttrDict()
@@ -985,6 +1013,8 @@ __C.EXPECTED_RESULTS_EMAIL = b''
 # specified by DOWNLOAD_CACHE
 __C.DOWNLOAD_CACHE = b'/tmp/detectron-download-cache'
 
+# visualize net graph
+__C.VIS_NET = False
 
 # ---------------------------------------------------------------------------- #
 # Cluster options

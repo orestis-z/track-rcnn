@@ -105,6 +105,17 @@ def im_detect_all(model, im, box_proposals, timers=None):
     else:
         cls_keyps = None
 
+    if cfg.MODEL.TRACKING_ON and boxes.shape[0] > 0:
+        timers['im_detect_tracking'].tic()
+        im_detect_tracking(model, im_scale, boxes)
+        timers['im_detect_tracking'].toc()
+
+        timers['misc_tracking'].tic()
+        # tracking_results(cls_boxes, heatmaps, boxes)
+        timers['misc_tracking'].toc()
+    else:
+        cls_keyps = None
+
     return cls_boxes, cls_segms, cls_keyps
 
 
@@ -746,6 +757,47 @@ def combine_heatmaps_size_dep(hms_ts, ds_ts, us_ts, boxes, heur_f):
     return hms_c
 
 
+def im_detect_tracking(model, im_scale, boxes):
+    """Infer instance keypoint poses. This function must be called after
+    im_detect_bbox as it assumes that the Caffe2 workspace is already populated
+    with the necessary blobs.
+
+    Arguments:
+        model (DetectionModelHelper): the detection model to use
+        im_scales (list): image blob scales as returned by im_detect_bbox
+        boxes (ndarray): R x 4 array of bounding box detections (e.g., as
+            returned by im_detect_bbox)
+
+    Returns:
+        pred_heatmaps (ndarray): R x J x M x M array of keypoint location
+            logits (softmax inputs) for each of the J keypoint types output
+            by the network (must be processed by keypoint_results to convert
+            into point predictions in the original image coordinate space)
+    """
+
+    inputs = {'tracking_rois': _get_rois_blob(boxes, im_scale)}
+
+    # Add multi-level rois for FPN
+    if cfg.FPN.MULTILEVEL_ROIS:
+        _add_multilevel_rois_for_test(inputs, 'tracking_rois')
+
+    for k, v in inputs.items():
+        workspace.FeedBlob(core.ScopedName(k), v)
+
+    workspace.RunNetOnce(model.param_init_net)
+    workspace.RunNet(model.tracking_net.Proto().name)
+
+    pred_heatmaps = workspace.FetchBlob(core.ScopedName('track_logits')).squeeze()
+
+    # track_fc = workspace.FetchBlob(core.ScopedName('track_fc'))
+    # track_fc_repeat = workspace.FetchBlob(core.ScopedName('track_fc_repeat'))
+    # track_fc_prev = workspace.FetchBlob(core.ScopedName('track_fc_prev'))
+    # track_fc_prev_tile = workspace.FetchBlob(core.ScopedName('track_fc_prev_tile'))
+    # track_feat = workspace.FetchBlob(core.ScopedName('track_feat'))
+
+    return pred_heatmaps
+
+
 def box_results_with_nms_and_limit(scores, boxes):
     """Returns bounding-box detection results by thresholding on scores and
     applying non-maximum suppression (NMS).
@@ -884,6 +936,10 @@ def keypoint_results(cls_boxes, pred_heatmaps, ref_boxes):
     kps = [xy_preds[i] for i in range(xy_preds.shape[0])]
     cls_keyps[person_idx] = kps
     return cls_keyps
+
+
+def tracking_results(cls_boxes, pred_heatmaps, ref_boxes):
+    return None
 
 
 def _get_rois_blob(im_rois, im_scale):
