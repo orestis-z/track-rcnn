@@ -352,6 +352,9 @@ def _add_roi_tracking_head(
     """Add a tracking prediction head to the model."""
     # Capture model graph before adding the tracking head
     bbox_net = copy.deepcopy(model.net.Proto())
+    
+    model.tracking_rec_net = core.Net("tracking_rec_net")
+    
     # Add the tracking head
     blob_tracking_head, dim_tracking_head = add_roi_tracking_head_func(
         model, blob_in, dim_in, spatial_scale_in

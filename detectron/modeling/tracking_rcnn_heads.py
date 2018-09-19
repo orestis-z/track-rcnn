@@ -48,20 +48,20 @@ def add_tracking_outputs(model, blob_in, dim):
     """Add RoI classification and bounding box regression output ops."""
     # Box classification layer
 
-    blob_out =  model.FC(
-        blob_in,
-        'track_logits',
-        dim,
-        1,
-        weight_init=gauss_fill(0.01),
-        bias_init=const_fill(0.0),
-    )
+    # blob_out =  model.FC(
+    #     blob_in,
+    #     'track_logits',
+    #     dim,
+    #     1,
+    #     weight_init=gauss_fill(0.01),
+    #     bias_init=const_fill(0.0),
+    # )
     if not model.train:  # == if test
         # Only add softmax when testing; during training the softmax is combined
         # with the label cross entropy loss for numerical stability
         model.Softmax('track_logits', 'track_prob', engine='CUDNN')
 
-    return blob_out
+    return blob_in
 
 
 def add_tracking_losses(model):
@@ -109,9 +109,13 @@ def add_tracking_head(model, blob_in, dim_in, spatial_scale):
     model.Tile(["track_fc_prev", "track_fc_len"], "track_fc_prev_tile", axis=0)
     model.Repeat(["track_fc", "track_fc_prev_len"], "track_fc_repeat")
 
-    blob_feat = model.Concat(["track_fc_repeat", "track_fc_prev_tile"], "track_feat")
+    # track_concat = model.Concat(["track_fc_repeat", "track_fc_prev_tile"], "track_concat")
+    track_L2 = model.SquaredL2Distance(["track_fc_repeat", "track_fc_prev_tile"], "track_L2")
 
-    return blob_feat, hidden_dim * 2
+    model.tracking_rec_net.Copy("track_fc", "track_fc_prev")
+
+    # return track_concat, hidden_dim * 2
+    return track_L2, 1
 
 
 def _init_track_fc_prev_blob(model, n_rois, hidden_dim):

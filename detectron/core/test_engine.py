@@ -338,6 +338,7 @@ def initialize_model_from_cfg(weights_file, gpu_id=0):
         workspace.CreateNet(model.keypoint_net)
     if cfg.MODEL.TRACKING_ON:
         workspace.CreateNet(model.tracking_net)
+        workspace.CreateNet(model.tracking_rec_net)
     return model
 
 

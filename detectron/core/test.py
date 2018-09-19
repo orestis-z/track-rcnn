@@ -786,6 +786,7 @@ def im_detect_tracking(model, im_scale, boxes):
 
     workspace.RunNetOnce(model.param_init_net)
     workspace.RunNet(model.tracking_net.Proto().name)
+    workspace.RunNet(model.tracking_rec_net.Proto().name)
 
     pred_heatmaps = workspace.FetchBlob(core.ScopedName('track_logits')).squeeze()
 

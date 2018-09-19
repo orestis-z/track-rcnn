@@ -212,6 +212,11 @@ def _sample_rois(roidb, im_scale, batch_idx):
             blob_dict, roidb, fg_rois_per_image, fg_inds, im_scale, batch_idx
         )
 
+    # if cfg.MODEL.TRACKING_ON:
+    #     keypoint_rcnn_roi_data.add_tracking_rcnn_blobs(
+    #         blob_dict, roidb, fg_rois_per_image, fg_inds, im_scale, batch_idx
+    #     )
+
     return blob_dict
 
 
@@ -272,3 +277,5 @@ def _add_multilevel_rois(blobs):
         _distribute_rois_over_fpn_levels('mask_rois')
     if cfg.MODEL.KEYPOINTS_ON:
         _distribute_rois_over_fpn_levels('keypoint_rois')
+    if cfg.MODEL.TRACKING_ON:
+        _distribute_rois_over_fpn_levels('tracking_rois')
