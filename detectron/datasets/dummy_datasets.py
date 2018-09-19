@@ -45,3 +45,14 @@ def get_coco_dataset():
     ]
     ds.classes = {i: name for i, name in enumerate(classes)}
     return ds
+
+def get_mot_dataset():
+    """A dummy MOT dataset that includes only the 'classes' field."""
+    ds = AttrDict()
+    classes = [
+        '__background__', 'ped', 'person_on_vhl', 'car', 'bicycle', 'mbike',
+        'non_mot_vhcl', 'static_person', 'distractor', 'occluder', 'occluder_on_grnd', 'occluder_full',
+        'reflection', 'crowd'
+    ]
+    ds.classes = {i: name for i, name in enumerate(classes)}
+    return ds
