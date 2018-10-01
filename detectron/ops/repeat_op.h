@@ -35,6 +35,15 @@ class RepeatOp : public Operator<Context> {
     shape[0] = len * repeats_data[0];
     output->Resize(shape);
 
+    if (OutputSize() > 1) {
+      auto* lengths = Output(1);
+      int shape_lengths[] = {len};
+      int* shape_lengths_ptr = &shape_lengths[0];
+      lengths->Resize(*shape_lengths_ptr);
+      auto* lengths_data = lengths->template mutable_data<T>();
+      math::Set<T, Context>(lengths->size(), repeats_data[0], lengths_data, &context_);
+    }
+
     auto block_bytesize = data.size_from_dim(1) * data.meta().itemsize();
     auto src = static_cast<const char*>(data.raw_data());
     auto out = static_cast<char*>(output->raw_mutable_data(data.meta()));

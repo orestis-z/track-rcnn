@@ -34,7 +34,7 @@ from detectron.core.config import cfg
 from detectron.core.config import get_output_dir
 from detectron.core.rpn_generator import generate_rpn_on_dataset
 from detectron.core.rpn_generator import generate_rpn_on_range
-from detectron.core.test import im_detect_all
+from detectron.core.test import im_detect_all, im_detect_all_multi
 from detectron.datasets import task_evaluation
 from detectron.datasets.json_dataset import JsonDataset
 from detectron.modeling import model_builder
@@ -105,7 +105,8 @@ def run_inference(
                     dataset_name,
                     proposal_file,
                     output_dir,
-                    multi_gpu=multi_gpu_testing
+                    multi_gpu=multi_gpu_testing,
+                    multi_batch=cfg.MODEL.TRACKING_ON
                 )
                 all_results.update(results)
 
@@ -143,6 +144,7 @@ def test_net_on_dataset(
     proposal_file,
     output_dir,
     multi_gpu=False,
+    multi_batch=False,
     gpu_id=0
 ):
     """Run inference on a dataset."""
@@ -154,6 +156,8 @@ def test_net_on_dataset(
         all_boxes, all_segms, all_keyps = multi_gpu_test_net_on_dataset(
             weights_file, dataset_name, proposal_file, num_images, output_dir
         )
+    elif multi_batch:
+        raise NotImplementedError("Multi-batch inference not implement yet")
     else:
         all_boxes, all_segms, all_keyps = test_net(
             weights_file, dataset_name, proposal_file, output_dir, gpu_id=gpu_id
@@ -337,8 +341,7 @@ def initialize_model_from_cfg(weights_file, gpu_id=0):
     if cfg.MODEL.KEYPOINTS_ON:
         workspace.CreateNet(model.keypoint_net)
     if cfg.MODEL.TRACKING_ON:
-        workspace.CreateNet(model.tracking_net)
-        workspace.CreateNet(model.tracking_rec_net)
+        workspace.CreateNet(model.track_net)
     return model
 
 
@@ -387,7 +390,8 @@ def empty_results(num_classes, num_images):
     all_boxes = [[[] for _ in range(num_images)] for _ in range(num_classes)]
     all_segms = [[[] for _ in range(num_images)] for _ in range(num_classes)]
     all_keyps = [[[] for _ in range(num_images)] for _ in range(num_classes)]
-    return all_boxes, all_segms, all_keyps
+    all_track = [[[] for _ in range(num_images)] for _ in range(num_classes)]
+    return all_boxes, all_segms, all_keyps, all_track
 
 
 def extend_results(index, all_res, im_res):

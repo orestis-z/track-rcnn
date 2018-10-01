@@ -79,6 +79,7 @@ class JsonDataset(object):
             for k, v in self.json_category_id_to_contiguous_id.items()
         }
         self._init_keypoints()
+        self._init_track()
 
     def get_roidb(
         self,
@@ -153,6 +154,8 @@ class JsonDataset(object):
             entry['gt_keypoints'] = np.empty(
                 (0, 3, self.num_keypoints), dtype=np.int32
             )
+        if self.track is not None:
+            entry['track_ids'] = np.empty((0), dtype=np.int32)
         # Remove unwanted fields that come from the json file (if they exist)
         for k in ['date_captured', 'url', 'license', 'file_name']:
             if k in entry:
@@ -206,6 +209,8 @@ class JsonDataset(object):
                 (num_valid_objs, 3, self.num_keypoints),
                 dtype=entry['gt_keypoints'].dtype
             )
+        if self.track is not None:
+            track_ids = np.zeros((num_valid_objs), dtype=np.int32)
 
         im_has_visible_keypoints = False
         for ix, obj in enumerate(valid_objs):
@@ -219,6 +224,8 @@ class JsonDataset(object):
                 gt_keypoints[ix, :, :] = self._get_gt_keypoints(obj)
                 if np.sum(gt_keypoints[ix, 2, :]) > 0:
                     im_has_visible_keypoints = True
+            if self.track is not None:
+                track_ids[ix] = obj['track_id']
             if obj['iscrowd']:
                 # Set overlap to -1 for all classes for crowd objects
                 # so they will be excluded during training
@@ -245,6 +252,8 @@ class JsonDataset(object):
                 entry['gt_keypoints'], gt_keypoints, axis=0
             )
             entry['has_visible_keypoints'] = im_has_visible_keypoints
+        if self.track is not None:
+            entry['track_ids'] = np.append(entry['track_ids'], track_ids)
 
     def _add_proposals_from_file(
         self, roidb, proposal_file, min_proposal_size, top_k, crowd_thresh
@@ -324,6 +333,13 @@ class JsonDataset(object):
             gt_kps[1, i] = y[i]
             gt_kps[2, i] = v[i]
         return gt_kps
+
+
+    def _init_track(self):
+        self.track = None
+        info = self.COCO.dataset["info"]
+        if info.get("type", None) == "track":
+            self.track = True
 
 
 def add_proposals(roidb, rois, scales, crowd_thresh):

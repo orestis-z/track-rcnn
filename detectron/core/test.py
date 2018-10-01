@@ -50,73 +50,95 @@ logger = logging.getLogger(__name__)
 
 
 def im_detect_all(model, im, box_proposals, timers=None):
+    cls_boxes_list, cls_segms_list, cls_keyps_list, _ = im_detect_all_multi(model, [im], [box_proposals], timers, tracking=False)
+
+    return cls_boxes_list[0], cls_segms_list[0], cls_keyps_list[0]
+
+def im_detect_all_multi(model, im_list, box_proposals_list, timers=None, tracking=True):
     if timers is None:
         timers = defaultdict(Timer)
 
+    boxes_list = []
+    im_scale_list = []
+    cls_boxes_list = []
+    cls_segms_list = []
+    cls_keyps_list = []
+
     # Handle RetinaNet testing separately for now
     if cfg.RETINANET.RETINANET_ON:
-        cls_boxes = test_retinanet.im_detect_bbox(model, im, timers)
-        return cls_boxes, None, None
+        for im in im_list:
+            cls_boxes = test_retinanet.im_detect_bbox(model, im, timers)
+            cls_boxes_list.append(cls_boxes)
 
-    timers['im_detect_bbox'].tic()
-    if cfg.TEST.BBOX_AUG.ENABLED:
-        scores, boxes, im_scale = im_detect_bbox_aug(model, im, box_proposals)
-    else:
-        scores, boxes, im_scale = im_detect_bbox(
-            model, im, cfg.TEST.SCALE, cfg.TEST.MAX_SIZE, boxes=box_proposals
-        )
-    timers['im_detect_bbox'].toc()
+        empty = [None] * len(im_list)
+        return cls_boxes_list, empty, empty, empty
 
-    # score and boxes are from the whole image after score thresholding and nms
-    # (they are not separated by class)
-    # cls_boxes boxes and scores are separated by class and in the format used
-    # for evaluating results
-    timers['misc_bbox'].tic()
-    scores, boxes, cls_boxes = box_results_with_nms_and_limit(scores, boxes)
-    timers['misc_bbox'].toc()
-
-    if cfg.MODEL.MASK_ON and boxes.shape[0] > 0:
-        timers['im_detect_mask'].tic()
-        if cfg.TEST.MASK_AUG.ENABLED:
-            masks = im_detect_mask_aug(model, im, boxes)
+    for i, im in enumerate(im_list):
+        box_proposals = box_proposals_list[i]
+        timers['im_detect_bbox'].tic()
+        if cfg.TEST.BBOX_AUG.ENABLED:
+            scores, boxes, im_scale = im_detect_bbox_aug(model, im, box_proposals)
         else:
-            masks = im_detect_mask(model, im_scale, boxes)
-        timers['im_detect_mask'].toc()
+            scores, boxes, im_scale = im_detect_bbox(
+                model, im, cfg.TEST.SCALE, cfg.TEST.MAX_SIZE, boxes=box_proposals
+            )
+        timers['im_detect_bbox'].toc()
+        im_scale_list.append(im_scale)
 
-        timers['misc_mask'].tic()
-        cls_segms = segm_results(
-            cls_boxes, masks, boxes, im.shape[0], im.shape[1]
-        )
-        timers['misc_mask'].toc()
-    else:
-        cls_segms = None
+        # score and boxes are from the whole image after score thresholding and nms
+        # (they are not separated by class)
+        # cls_boxes boxes and scores are separated by class and in the format used
+        # for evaluating results
+        timers['misc_bbox'].tic()
+        scores, boxes, cls_boxes = box_results_with_nms_and_limit(scores, boxes)
+        timers['misc_bbox'].toc()
+        boxes_list.append(boxes)
+        cls_boxes_list.append(cls_boxes)
 
-    if cfg.MODEL.KEYPOINTS_ON and boxes.shape[0] > 0:
-        timers['im_detect_keypoints'].tic()
-        if cfg.TEST.KPS_AUG.ENABLED:
-            heatmaps = im_detect_keypoints_aug(model, im, boxes)
+        if cfg.MODEL.MASK_ON and boxes.shape[0] > 0:
+            timers['im_detect_mask'].tic()
+            if cfg.TEST.MASK_AUG.ENABLED:
+                masks = im_detect_mask_aug(model, im, boxes)
+            else:
+                masks = im_detect_mask(model, im_scale, boxes)
+            timers['im_detect_mask'].toc()
+
+            timers['misc_mask'].tic()
+            cls_segms = segm_results(
+                cls_boxes, masks, boxes, im.shape[0], im.shape[1]
+            )
+            timers['misc_mask'].toc()
+            cls_segms_list.append(cls_segms)
         else:
-            heatmaps = im_detect_keypoints(model, im_scale, boxes)
-        timers['im_detect_keypoints'].toc()
+            cls_segms_list.append(None)
 
-        timers['misc_keypoints'].tic()
-        cls_keyps = keypoint_results(cls_boxes, heatmaps, boxes)
-        timers['misc_keypoints'].toc()
+        if cfg.MODEL.KEYPOINTS_ON and boxes.shape[0] > 0:
+            timers['im_detect_keypoints'].tic()
+            if cfg.TEST.KPS_AUG.ENABLED:
+                heatmaps = im_detect_keypoints_aug(model, im, boxes)
+            else:
+                heatmaps = im_detect_keypoints(model, im_scale, boxes)
+            timers['im_detect_keypoints'].toc()
+
+            timers['misc_keypoints'].tic()
+            cls_keyps = keypoint_results(cls_boxes, heatmaps, boxes)
+            timers['misc_keypoints'].toc()
+            cls_keyps_list.append(cls_keyps)
+        else:
+            cls_keyps_list.append(None)
+
+    if cfg.MODEL.TRACKING_ON and boxes.shape[0] > 0 and tracking:
+        timers['im_detect_track'].tic()
+        cls_track = im_detect_track(model, im_scale_list, boxes_list)
+        timers['im_detect_track'].toc()
+
+        timers['misc_track'].tic()
+        # track_results(cls_boxes, heatmaps, boxes)
+        timers['misc_track'].toc()
     else:
-        cls_keyps = None
+        cls_track =  None
 
-    if cfg.MODEL.TRACKING_ON and boxes.shape[0] > 0:
-        timers['im_detect_tracking'].tic()
-        im_detect_tracking(model, im_scale, boxes)
-        timers['im_detect_tracking'].toc()
-
-        timers['misc_tracking'].tic()
-        # tracking_results(cls_boxes, heatmaps, boxes)
-        timers['misc_tracking'].toc()
-    else:
-        cls_keyps = None
-
-    return cls_boxes, cls_segms, cls_keyps
+    return cls_boxes_list, cls_segms_list, cls_keyps_list, cls_track
 
 
 def im_conv_body_only(model, im, target_scale, target_max_size):
@@ -757,7 +779,7 @@ def combine_heatmaps_size_dep(hms_ts, ds_ts, us_ts, boxes, heur_f):
     return hms_c
 
 
-def im_detect_tracking(model, im_scale, boxes):
+def im_detect_track(model, im_scale_list, boxes_list):
     """Infer instance keypoint poses. This function must be called after
     im_detect_bbox as it assumes that the Caffe2 workspace is already populated
     with the necessary blobs.
@@ -775,28 +797,28 @@ def im_detect_tracking(model, im_scale, boxes):
             into point predictions in the original image coordinate space)
     """
 
-    inputs = {'tracking_rois': _get_rois_blob(boxes, im_scale)}
+    inputs_list = []
+
+    for i, boxes in enumerate(boxes_list):
+        inputs_list.append({'track_rois': _get_rois_blob(boxes, im_scale_list[i])})
 
     # Add multi-level rois for FPN
     if cfg.FPN.MULTILEVEL_ROIS:
-        _add_multilevel_rois_for_test(inputs, 'tracking_rois')
+        for inputs in inputs_list:
+            _add_multilevel_rois_for_test(inputs, 'track_rois')
+
+    inputs = reduce((lambda inputs_1, inputs_2: {key: np.concatenate((val_1, inputs_2[key]), axis=0) for key, val_1 in inputs_1.items()}), inputs_list)
+
+    inputs['track_n_rois'] = np.array([len(boxes) for boxes in boxes_list], dtype=np.int32)
 
     for k, v in inputs.items():
         workspace.FeedBlob(core.ScopedName(k), v)
 
-    workspace.RunNetOnce(model.param_init_net)
-    workspace.RunNet(model.tracking_net.Proto().name)
-    workspace.RunNet(model.tracking_rec_net.Proto().name)
+    workspace.RunNet(model.track_net.Proto().name)
 
-    pred_heatmaps = workspace.FetchBlob(core.ScopedName('track_logits')).squeeze()
+    similarity = workspace.FetchBlob(core.ScopedName('track_similarity')).squeeze()
 
-    # track_fc = workspace.FetchBlob(core.ScopedName('track_fc'))
-    # track_fc_repeat = workspace.FetchBlob(core.ScopedName('track_fc_repeat'))
-    # track_fc_prev = workspace.FetchBlob(core.ScopedName('track_fc_prev'))
-    # track_fc_prev_tile = workspace.FetchBlob(core.ScopedName('track_fc_prev_tile'))
-    # track_feat = workspace.FetchBlob(core.ScopedName('track_feat'))
-
-    return pred_heatmaps
+    return similarity
 
 
 def box_results_with_nms_and_limit(scores, boxes):
@@ -939,7 +961,7 @@ def keypoint_results(cls_boxes, pred_heatmaps, ref_boxes):
     return cls_keyps
 
 
-def tracking_results(cls_boxes, pred_heatmaps, ref_boxes):
+def track_results(cls_boxes, pred_heatmaps, ref_boxes):
     return None
 
 

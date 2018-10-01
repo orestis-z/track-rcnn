@@ -134,6 +134,8 @@ __C.TRAIN.PROPOSAL_FILES = ()
 # faster)
 __C.TRAIN.ASPECT_GROUPING = True
 
+__C.TRAIN.CONTINUE_ON_ERROR = False
+
 # ---------------------------------------------------------------------------- #
 # RPN training options
 # ---------------------------------------------------------------------------- #
@@ -883,11 +885,10 @@ __C.TRCNN.ROI_XFORM_METHOD = b'RoIAlign'
 __C.TRCNN.ROI_XFORM_RESOLUTION = 7
 __C.TRCNN.ROI_XFORM_SAMPLING_RATIO = 0
 
-# Multi-task loss weight to use for keypoints
-# Recommended values:
-#   - use 1.0 if TRCNN.NORMALIZE_BY_VISIBLE_KEYPOINTS is True
-#   - use 4.0 if TRCNN.NORMALIZE_BY_VISIBLE_KEYPOINTS is False
+# Multi-task loss weight to use for tracking
 __C.TRCNN.LOSS_WEIGHT = 1.0
+
+__C.TRCNN.LOSS = b'L2'
 
 
 # ---------------------------------------------------------------------------- #
@@ -1111,6 +1112,8 @@ def assert_and_infer_cfg(cache_urls=True, make_immutable=True):
         __C.RPN.RPN_ON = True
     if __C.RPN.RPN_ON or __C.RETINANET.RETINANET_ON:
         __C.TEST.PRECOMPUTED_PROPOSALS = False
+    if cfg.MODEL.TRACKING_ON:
+        __C.TRAIN.IMS_PER_BATCH = 2	
     if cache_urls:
         cache_cfg_urls()
     if make_immutable:

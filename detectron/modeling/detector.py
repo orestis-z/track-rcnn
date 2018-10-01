@@ -33,6 +33,7 @@ from detectron.core.config import cfg
 from detectron.ops.collect_and_distribute_fpn_rpn_proposals \
     import CollectAndDistributeFpnRpnProposalsOp
 from detectron.ops.generate_proposal_labels import GenerateProposalLabelsOp
+from detectron.ops.generate_tracking_labels import GenerateTrackingLabelsOp
 from detectron.ops.generate_proposals import GenerateProposalsOp
 import detectron.roi_data.fast_rcnn as fast_rcnn_roi_data
 import detectron.utils.c2 as c2_utils
@@ -224,6 +225,24 @@ class DetectionModelHelper(cnn.CNNModelHelper):
         )(blobs_in, blobs_out, name=name)
 
         return outputs
+
+    def GenerateTrackingLabels(self, blobs_in, blob_out):
+        """
+        blobs_in:
+          - 'track_ids_one_int32'
+          - 'track_ids_two_int32'
+
+        blobs_out:
+          - 'track_labels_int32'
+        """
+        name = 'GenerateTrackingLabelsOp:' + ','.join([str(b) for b in blobs_in])
+
+        blobs_out = [core.ScopedBlobReference(blob_out)]
+
+        self.net.Python(GenerateTrackingLabelsOp().forward)(
+            blobs_in, blobs_out, name=name
+        )
+        return blobs_out
 
     def DropoutIfTraining(self, blob_in, dropout_rate):
         """Add dropout to blob_in if the model is in training mode and

@@ -115,7 +115,7 @@ def add_rpn_blobs(blobs, im_scales, roidb):
 
     valid_keys = [
         'has_visible_keypoints', 'boxes', 'segms', 'seg_areas', 'gt_classes',
-        'gt_overlaps', 'is_crowd', 'box_to_gt_ind_map', 'gt_keypoints'
+        'gt_overlaps', 'is_crowd', 'box_to_gt_ind_map', 'gt_keypoints', 'track_ids'
     ]
     minimal_roidb = [{} for _ in range(len(roidb))]
     for i, e in enumerate(roidb):

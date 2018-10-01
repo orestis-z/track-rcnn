@@ -31,6 +31,7 @@ from detectron.core.config import cfg
 import detectron.modeling.FPN as fpn
 import detectron.roi_data.keypoint_rcnn as keypoint_rcnn_roi_data
 import detectron.roi_data.mask_rcnn as mask_rcnn_roi_data
+import detectron.roi_data.track_rcnn as track_rcnn_roi_data
 import detectron.utils.blob as blob_utils
 import detectron.utils.boxes as box_utils
 
@@ -85,10 +86,12 @@ def get_fast_rcnn_blob_names(is_training=True):
         # cfg.KRCNN.NORMALIZE_BY_VISIBLE_KEYPOINTS is False.
         blob_names += ['keypoint_loss_normalizer']
     if is_training and cfg.MODEL.TRACKING_ON:
-        # 'tracking_rois': RoIs sampled for training the tracking prediction
+        # 'track_rois': RoIs sampled for training the track prediction
         # branch. Shape is (#instances, 5) in format (batch_idx, x1, y1, x2,
         # y2).
-        blob_names += ['tracking_rois']
+        blob_names += ['track_rois']
+        blob_names += ['track_ids_int32']
+        blob_names += ['track_n_rois']
     if cfg.FPN.FPN_ON and cfg.FPN.MULTILEVEL_ROIS:
         # Support for FPN multi-level rois without bbox reg isn't
         # implemented (... and may never be implemented)
@@ -109,8 +112,8 @@ def get_fast_rcnn_blob_names(is_training=True):
                 blob_names += ['keypoint_rois_idx_restore_int32']
             if cfg.MODEL.TRACKING_ON:
                 for lvl in range(k_min, k_max + 1):
-                    blob_names += ['tracking_rois_fpn' + str(lvl)]
-                blob_names += ['tracking_rois_idx_restore_int32']
+                    blob_names += ['track_rois_fpn' + str(lvl)]
+                blob_names += ['track_rois_idx_restore_int32']
     return blob_names
 
 
@@ -212,10 +215,11 @@ def _sample_rois(roidb, im_scale, batch_idx):
             blob_dict, roidb, fg_rois_per_image, fg_inds, im_scale, batch_idx
         )
 
-    # if cfg.MODEL.TRACKING_ON:
-    #     keypoint_rcnn_roi_data.add_tracking_rcnn_blobs(
-    #         blob_dict, roidb, fg_rois_per_image, fg_inds, im_scale, batch_idx
-    #     )
+    if cfg.MODEL.TRACKING_ON:
+        track_rcnn_roi_data.add_track_rcnn_blobs(
+            # blob_dict, sampled_rois, roidb
+            blob_dict, sampled_boxes, roidb, im_scale, batch_idx
+        )
 
     return blob_dict
 
@@ -278,4 +282,4 @@ def _add_multilevel_rois(blobs):
     if cfg.MODEL.KEYPOINTS_ON:
         _distribute_rois_over_fpn_levels('keypoint_rois')
     if cfg.MODEL.TRACKING_ON:
-        _distribute_rois_over_fpn_levels('tracking_rois')
+        _distribute_rois_over_fpn_levels('track_rois')

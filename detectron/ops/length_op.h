@@ -16,9 +16,9 @@ class LengthOp : public Operator<Context> {
     auto& input = Input(0);
     auto* output = OperatorBase::Output<Tensor<Context>>(0);
     output->Resize(1);
-    TIndex* output_data = output->template mutable_data<TIndex>();
+    int* output_data = output->template mutable_data<int>();
     context_.template CopyBytes<Context, Context>(
-        sizeof(TIndex), input.dims().data(), output_data);
+        sizeof(int), input.dims().data(), output_data);
     return true;
   }
 };
