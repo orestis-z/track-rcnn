@@ -28,7 +28,7 @@ class RepeatOp : public Operator<Context> {
 
     CPUContext cpuContext;
     repeats_host_.CopyFrom(repeats, &cpuContext);
-    auto* repeats_data = repeats_host_.data<T>();
+    int* repeats_data = (int*) repeats_host_.data<T>();
 
     auto shape = data.dims();
     auto len = shape[0];
@@ -40,8 +40,8 @@ class RepeatOp : public Operator<Context> {
       int shape_lengths[] = {len};
       int* shape_lengths_ptr = &shape_lengths[0];
       lengths->Resize(*shape_lengths_ptr);
-      auto* lengths_data = lengths->template mutable_data<T>();
-      math::Set<T, Context>(lengths->size(), repeats_data[0], lengths_data, &context_);
+      int* lengths_data = (int*) lengths->template mutable_data<int>();
+      math::Set<int, Context>(lengths->size(), repeats_data[0], lengths_data, &context_);
     }
 
     auto block_bytesize = data.size_from_dim(1) * data.meta().itemsize();

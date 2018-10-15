@@ -35,6 +35,6 @@ class GenerateTrackingLabelsOp(object):
         track_ids_one = inputs[0].data
         track_ids_two = inputs[1].data
 
-        tracking_labels = np.array([[id_one == id_two for id_one in track_ids_one for id_two in track_ids_two]], dtype=np.float)
+        tracking_labels = np.array([id_one == id_two for id_one in track_ids_one for id_two in track_ids_two], dtype=np.int32)
         
         blob_utils.py_op_copy_blob(tracking_labels, outputs[0])

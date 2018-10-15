@@ -92,6 +92,8 @@ def get_fast_rcnn_blob_names(is_training=True):
         blob_names += ['track_rois']
         blob_names += ['track_ids_int32']
         blob_names += ['track_n_rois']
+        blob_names += ['track_n_rois_one']
+        blob_names += ['track_n_rois_two']
     if cfg.FPN.FPN_ON and cfg.FPN.MULTILEVEL_ROIS:
         # Support for FPN multi-level rois without bbox reg isn't
         # implemented (... and may never be implemented)
@@ -137,6 +139,8 @@ def add_fast_rcnn_blobs(blobs, im_scales, roidb):
     valid = True
     if cfg.MODEL.KEYPOINTS_ON:
         valid = keypoint_rcnn_roi_data.finalize_keypoint_minibatch(blobs, valid)
+    if cfg.MODEL.TRACKING_ON:
+        track_rcnn_roi_data.finalize_track_minibatch(blobs)
 
     return valid
 

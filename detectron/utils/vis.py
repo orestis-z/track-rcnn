@@ -205,7 +205,7 @@ def distinct_colors(n):
     return rgb_tuples
 
 def vis_image_pair_opencv(
-        im_list, boxes_list, segms_list=None, keypoints_list=None, track=None, thresh=0.9, kp_thresh=2, track_thresh=0.5,
+        im_list, boxes_list, segms_list=None, keypoints_list=None, track=None, thresh=0.9, kp_thresh=2, track_thresh=0.7,
         show_box=False, dataset=None, show_class=False, show_track=False):
     """Constructs a numpy array with the detections visualized."""
 

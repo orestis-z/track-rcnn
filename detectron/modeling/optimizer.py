@@ -39,7 +39,7 @@ def build_data_parallel_model(model, single_gpu_build_func):
     elif model.train:
         all_loss_gradients = _build_forward_graph(model, single_gpu_build_func)
         # Add backward pass on all GPUs
-        if not cfg.VIS_NET:
+        if not cfg.MODEL.FORWARD_ONLY:
             model.AddGradientOperators(all_loss_gradients)
         if cfg.NUM_GPUS > 1:
             _add_allreduce_graph(model)

@@ -119,7 +119,7 @@ def create(model_type_func, train=False, gpu_id=0):
         name=model_type_func,
         train=train,
         num_classes=cfg.MODEL.NUM_CLASSES,
-        init_params=train
+        init_params=(train or cfg.VIS_NET)
     )
     model.only_build_forward_pass = False
     model.target_gpu_id = gpu_id

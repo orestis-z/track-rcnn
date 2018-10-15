@@ -50,7 +50,7 @@ logger = logging.getLogger(__name__)
 
 
 def im_detect_all(model, im, box_proposals, timers=None):
-    cls_boxes_list, cls_segms_list, cls_keyps_list, _ = im_detect_all_multi(model, [im], [box_proposals], timers, tracking=False)
+    cls_boxes_list, cls_segms_list, cls_keyps_list, _, _, _ = im_detect_all_multi(model, [im], [box_proposals], timers, tracking=False)
 
     return cls_boxes_list[0], cls_segms_list[0], cls_keyps_list[0]
 
@@ -59,6 +59,7 @@ def im_detect_all_multi(model, im_list, box_proposals_list, timers=None, trackin
         timers = defaultdict(Timer)
 
     boxes_list = []
+    boxes_raw_list = []
     im_scale_list = []
     cls_boxes_list = []
     cls_segms_list = []
@@ -85,6 +86,8 @@ def im_detect_all_multi(model, im_list, box_proposals_list, timers=None, trackin
         timers['im_detect_bbox'].toc()
         im_scale_list.append(im_scale)
 
+        boxes_raw_list.append(boxes)
+        
         # score and boxes are from the whole image after score thresholding and nms
         # (they are not separated by class)
         # cls_boxes boxes and scores are separated by class and in the format used
@@ -138,7 +141,7 @@ def im_detect_all_multi(model, im_list, box_proposals_list, timers=None, trackin
     else:
         cls_track =  None
 
-    return cls_boxes_list, cls_segms_list, cls_keyps_list, cls_track
+    return cls_boxes_list, cls_segms_list, cls_keyps_list, cls_track, boxes_raw_list, im_scale_list
 
 
 def im_conv_body_only(model, im, target_scale, target_max_size):

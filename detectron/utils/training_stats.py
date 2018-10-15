@@ -28,7 +28,7 @@ import numpy as np
 from caffe2.python import utils as c2_py_utils
 
 from detectron.core.config import cfg
-from detectron.utils.logging import log_json_stats
+from detectron.utils.logging import StatsLogger
 from detectron.utils.logging import SmoothedValue
 from detectron.utils.timer import Timer
 import detectron.utils.net as nu
@@ -41,7 +41,7 @@ class TrainingStats(object):
         # Window size for smoothing tracked values (with median filtering)
         self.WIN_SZ = 20
         # Output logging period in SGD iterations
-        self.LOG_PERIOD = 20
+        self.LOG_PERIOD = cfg.TRAIN.LOG_PERIOD
         self.smoothed_losses_and_metrics = {
             key: SmoothedValue(self.WIN_SZ)
             for key in model.losses + model.metrics
@@ -55,6 +55,8 @@ class TrainingStats(object):
         self.iter_total_loss = np.nan
         self.iter_timer = Timer()
         self.model = model
+
+        self.stats_logger = StatsLogger()
 
     def IterTic(self):
         self.iter_timer.tic()
@@ -87,7 +89,7 @@ class TrainingStats(object):
         if (cur_iter % self.LOG_PERIOD == 0 or
                 cur_iter == cfg.SOLVER.MAX_ITER - 1):
             stats = self.GetStats(cur_iter, lr)
-            log_json_stats(stats)
+            self.stats_logger.log_json(stats)
 
     def GetStats(self, cur_iter, lr):
         eta_seconds = self.iter_timer.average_time * (

@@ -26,14 +26,31 @@ import json
 import logging
 import numpy as np
 import smtplib
-import sys
+import sys, os
+
+from detectron.core.config import cfg
+from detectron.core.config import get_output_dir
 
 # Print lower precision floating point values than default FLOAT_REPR
 json.encoder.FLOAT_REPR = lambda o: format(o, '.6f')
 
 
-def log_json_stats(stats, sort_keys=True):
-    print('json_stats: {:s}'.format(json.dumps(stats, sort_keys=sort_keys)))
+class StatsLogger(object):
+    def __init__(self, save=True, sort_keys=True):
+        self.save = save
+        if save:
+            self.output_dir = get_output_dir(cfg.TRAIN.DATASETS, training=True)
+            self.log_path = os.path.join(self.output_dir, 'log.json')
+            open(self.log_path, "w").close()
+        self.sort_keys = sort_keys
+
+    def log_json(self, stats):
+        json_stats = json.dumps(stats, sort_keys=self.sort_keys)
+        print('json_stats: {:s}'.format(json_stats))
+        if self.save:
+            with open(self.log_path, "a") as f:
+                f.write(json_stats + "\n")
+
 
 
 class SmoothedValue(object):

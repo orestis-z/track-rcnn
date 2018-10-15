@@ -71,6 +71,8 @@ cfg = __C
 # ---------------------------------------------------------------------------- #
 __C.TRAIN = AttrDict()
 
+__C.TRAIN.DEBUG = False
+
 # Initialize network with weights from this .pkl file
 __C.TRAIN.WEIGHTS = b''
 
@@ -135,6 +137,9 @@ __C.TRAIN.PROPOSAL_FILES = ()
 __C.TRAIN.ASPECT_GROUPING = True
 
 __C.TRAIN.CONTINUE_ON_ERROR = False
+__C.TRAIN.SKIP_NON_MATCHING_WEIGHTS = False
+
+__C.TRAIN.LOG_PERIOD = 5
 
 # ---------------------------------------------------------------------------- #
 # RPN training options
@@ -493,6 +498,7 @@ __C.MODEL.RPN_ONLY = False
 # Use 'prof_dag' to get profiling statistics
 __C.MODEL.EXECUTION_TYPE = b'dag'
 
+__C.MODEL.FORWARD_ONLY = False
 
 # ---------------------------------------------------------------------------- #
 # RetinaNet options
@@ -879,6 +885,7 @@ __C.TRCNN.ROI_TRACKING_HEAD = b''
 
 # Hidden layer dimension when using an MLP for the RoI track head
 __C.TRCNN.MLP_HEAD_DIM = 256
+__C.TRCNN.MLP_HIDDEN_DIM = 512
 
 # Standard ROI XFORM options (see FAST_RCNN or MRCNN options)
 __C.TRCNN.ROI_XFORM_METHOD = b'RoIAlign'
@@ -889,6 +896,7 @@ __C.TRCNN.ROI_XFORM_SAMPLING_RATIO = 0
 __C.TRCNN.LOSS_WEIGHT = 1.0
 
 __C.TRCNN.LOSS = b'L2'
+__C.TRCNN.OUTPUTS = b'MatchNet'
 
 
 # ---------------------------------------------------------------------------- #
