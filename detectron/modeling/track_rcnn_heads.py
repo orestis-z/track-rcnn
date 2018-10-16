@@ -98,7 +98,7 @@ def add_track_outputs(model, blob_in, dim):
         if not model.train:  # == if test
             # Only add softmax when testing; during training the softmax is combined
             # with the label cross entropy loss for numerical stability
-            model.Softmax("track_score", "track_prob", engine='CUDNN')
+            model.Softmax("track_score", "track_prob", axis=1, engine='CUDNN')
             model.Slice("track_prob", "track_similarity_", starts=[0, 1], ends=[-1, -1])
             blob_out = model.Transpose("track_similarity_", "track_similarity")
 

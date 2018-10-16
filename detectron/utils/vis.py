@@ -254,20 +254,20 @@ def vis_image_pair_opencv(
     assert(len(sorted_inds_list[1]) == m_rois)
     assert(len(track) == n_rois * m_rois)
 
-    track_probs_mat = np.zeros((n_rois, m_rois))
+    track_prob_mat = np.zeros((n_rois, m_rois))
     for i in keep_idx[0]:
         for j in keep_idx[1]:
-            track_probs_mat[i, j] = track[m_rois * i + j]
-    assign_inds_list = linear_sum_assignment(-np.where(track_probs_mat > track_thresh, track_probs_mat, np.zeros((n_rois, m_rois))))
+            track_prob_mat[i, j] = track[m_rois * i + j]
+    track_prob_mat = np.where(track_prob_mat > track_thresh, track_prob_mat, np.zeros((n_rois, m_rois)))
+    assign_inds_list = linear_sum_assignment(-track_prob_mat)
 
     colors = distinct_colors(min(n_rois, m_rois))
     
     for i, im in enumerate(im_list):
         boxes = boxes_list[i]
         classes = classes_list[i]
-        sorted_inds = sorted_inds_list[i]
         assign_inds = assign_inds_list[i]
-        for idx in sorted_inds:
+        for idx in keep_idx[i]:
             bbox = boxes[idx, :4]
             score = boxes[idx, -1]
             if idx not in assign_inds:
@@ -276,12 +276,14 @@ def vis_image_pair_opencv(
             assign_inds_other = assign_inds_list[i_other]
             i_track = assign_inds.tolist().index(idx)
             idx_other = assign_inds_other[i_track]
+            if idx_other not in keep_idx[i_other]:
+                continue
             if i == 0:
-                track_prob = track_probs_mat[idx, idx_other]
+                track_prob = track_prob_mat[idx, idx_other]
             else:
-                track_prob = track_probs_mat[idx_other, idx]
+                track_prob = track_prob_mat[idx_other, idx]
 
-            if score < thresh or track_prob == 0:
+            if track_prob < track_thresh:
                 continue
 
             # show box (off by default)
@@ -312,7 +314,7 @@ def vis_image_pair_opencv(
 
         ret.append(im)
     
-    ret.append(track_probs_mat)
+    ret.append(track_prob_mat)
 
     return ret
 
@@ -351,12 +353,12 @@ def vis_image_pair_opencv_gt(
     assert(len(sorted_inds_list[1]) == m_rois)
     assert(len(track) == n_rois * m_rois)
 
-    track_probs_mat = np.zeros((n_rois, m_rois))
+    track_prob_mat = np.zeros((n_rois, m_rois))
 
     for i in sorted_inds_list[0]:
         for j in sorted_inds_list[1]:
-            track_probs_mat[i, j] = track[m_rois * i + j]
-    assign_inds_list = linear_sum_assignment(-track_probs_mat)
+            track_prob_mat[i, j] = track[m_rois * i + j]
+    assign_inds_list = linear_sum_assignment(-track_prob_mat)
 
     colors = distinct_colors(min(n_rois, m_rois))
 

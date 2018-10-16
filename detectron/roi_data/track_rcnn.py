@@ -28,11 +28,6 @@ import numpy as np
 from detectron.core.config import cfg
 import detectron.utils.blob as blob_utils
 
-if cfg.TRAIN.DEBUG:
-    import cv2 
-    from detectron.utils.vis import vis_bbox, vis_class, distinct_colors
-    import matplotlib.pyplot as plt
-
 
 def add_track_rcnn_blobs(blobs, sampled_boxes, roidb, im_scale, batch_idx):
     """Add Track R-CNN specific blobs to the input blob dictionary."""
@@ -53,6 +48,10 @@ def add_track_rcnn_blobs(blobs, sampled_boxes, roidb, im_scale, batch_idx):
     blobs['track_n_rois'] = np.array([len(sampled_rois)], dtype=np.int32)
 
     if cfg.TRAIN.DEBUG:
+        import cv2 
+        from detectron.utils.vis import vis_bbox, vis_class, distinct_colors
+        import matplotlib.pyplot as plt
+
         gt_inds = np.where(roidb['gt_classes'] > 0)[0]
         rpn_inds = np.where(roidb['gt_classes'] == 0)[0]
 

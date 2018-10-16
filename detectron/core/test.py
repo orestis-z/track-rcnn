@@ -64,6 +64,9 @@ def im_detect_all_multi(model, im_list, box_proposals_list, timers=None, trackin
     cls_boxes_list = []
     cls_segms_list = []
     cls_keyps_list = []
+    fpn_res_sum_list = [{}, {}]
+    fpn_res_blob_names = ['5_2', '4_5', '3_3', '2_2']
+    fpn_res_blob_names = ['fpn_res{}_sum'.format(name) for name in fpn_res_blob_names]
 
     # Handle RetinaNet testing separately for now
     if cfg.RETINANET.RETINANET_ON:
@@ -83,6 +86,9 @@ def im_detect_all_multi(model, im_list, box_proposals_list, timers=None, trackin
             scores, boxes, im_scale = im_detect_bbox(
                 model, im, cfg.TEST.SCALE, cfg.TEST.MAX_SIZE, boxes=box_proposals
             )
+        for blob_name in fpn_res_blob_names:
+            fpn_res_sum_list[i][blob_name] = workspace.FetchBlob(core.ScopedName(blob_name))
+
         timers['im_detect_bbox'].toc()
         im_scale_list.append(im_scale)
 
@@ -131,6 +137,11 @@ def im_detect_all_multi(model, im_list, box_proposals_list, timers=None, trackin
             cls_keyps_list.append(None)
 
     if cfg.MODEL.TRACKING_ON and boxes.shape[0] > 0 and tracking:
+        for blob_name, val_1 in fpn_res_sum_list[0].items():
+            workspace.FeedBlob(core.ScopedName(blob_name), np.concatenate((
+                val_1,
+                fpn_res_sum_list[1][blob_name]
+            )))
         timers['im_detect_track'].tic()
         cls_track = im_detect_track(model, im_scale_list, boxes_list)
         timers['im_detect_track'].toc()
@@ -800,19 +811,18 @@ def im_detect_track(model, im_scale_list, boxes_list):
             into point predictions in the original image coordinate space)
     """
 
-    inputs_list = []
-
-    for i, boxes in enumerate(boxes_list):
-        inputs_list.append({'track_rois': _get_rois_blob(boxes, im_scale_list[i])})
-
+    track_rois_list = [_get_rois_blob(boxes, im_scale_list[i]) for i, boxes in enumerate(boxes_list)]
+    for i, track_rois in enumerate(track_rois_list):
+        track_rois[:, 0] = float(i)
+    inputs = {'track_rois': np.vstack(track_rois_list)}
     # Add multi-level rois for FPN
     if cfg.FPN.MULTILEVEL_ROIS:
-        for inputs in inputs_list:
-            _add_multilevel_rois_for_test(inputs, 'track_rois')
-
-    inputs = reduce((lambda inputs_1, inputs_2: {key: np.concatenate((val_1, inputs_2[key]), axis=0) for key, val_1 in inputs_1.items()}), inputs_list)
+        _add_multilevel_rois_for_test(inputs, 'track_rois')
 
     inputs['track_n_rois'] = np.array([len(boxes) for boxes in boxes_list], dtype=np.int32)
+
+    inputs['track_n_rois_one'] = np.array([inputs['track_n_rois'][0]])
+    inputs['track_n_rois_two'] = np.array([inputs['track_n_rois'][1]])
 
     for k, v in inputs.items():
         workspace.FeedBlob(core.ScopedName(k), v)
