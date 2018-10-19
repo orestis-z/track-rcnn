@@ -31,9 +31,6 @@ import sys, os
 from detectron.core.config import cfg
 from detectron.core.config import get_output_dir
 
-# Print lower precision floating point values than default FLOAT_REPR
-json.encoder.FLOAT_REPR = lambda o: format(o, '.6f')
-
 
 class StatsLogger(object):
     def __init__(self, save=True, sort_keys=True):
@@ -62,7 +59,6 @@ class StatsLogger(object):
         if self.save:
             with open(self.log_path, "a") as f:
                 f.write(json_stats + "\n")
-
 
 
 class SmoothedValue(object):
