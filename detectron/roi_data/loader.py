@@ -136,7 +136,24 @@ class RoIDataLoader(object):
 
     def _shuffle_roidb_inds(self):
         """Randomly permute the training roidb. Not thread safe."""
-        if cfg.TRAIN.ASPECT_GROUPING:
+        if cfg.MODEL.TRACKING_ON:
+            roidbs = [[el for el in self._roidb if el['dataset'].name == name] for name in cfg.TRAIN.DATASETS]
+            perms = [None] * len(roidbs)
+            for i, roidb in enumerate(roidbs):
+                n_idx = len(roidb)
+                delta_frames = cfg.TRCNN.FRAME_DIST_MAX - cfg.TRCNN.FRAME_DIST_MIN
+                perms[i] = np.random.permutation(np.arange(len(roidb)))
+                perm_one = perms[i] + np.random.randint(delta_frames + 1, size=n_idx) + cfg.TRCNN.FRAME_DIST_MIN 
+                perm_one = np.array([idx if idx < n_idx else n_idx - 1 for idx in perm_one])
+                perm_two = perms[i].copy()
+                off = sum([len(_roidb) for _roidb in roidbs[:i]])
+                perm_one += off
+                perm_two += off
+                perms[i] = zip(perm_one, perm_two)
+            self._perm = [item for sublist in perms for item in sublist]
+            np.random.shuffle(self._perm)
+            self._perm = [item for tup in self._perm for item in tup]
+        elif cfg.TRAIN.ASPECT_GROUPING:
             widths = np.array([r['width'] for r in self._roidb])
             heights = np.array([r['height'] for r in self._roidb])
             horz = (widths >= heights)

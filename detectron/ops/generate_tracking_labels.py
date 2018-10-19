@@ -36,5 +36,9 @@ class GenerateTrackingLabelsOp(object):
         track_ids_two = inputs[1].data
 
         tracking_labels = np.array([id_one == id_two for id_one in track_ids_one for id_two in track_ids_two], dtype=np.int32)
+        n_matches = sum(tracking_labels)
         
+        assert n_matches > 0, "Image pair with no matches encountered"
+        assert len(tracking_labels) - n_matches > 0, "Image pair with only matches encountered"
+
         blob_utils.py_op_copy_blob(tracking_labels, outputs[0])

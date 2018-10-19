@@ -376,6 +376,14 @@ def vis_image_pair_opencv_gt(
             assign_inds_other = assign_inds_list[i_other]
             i_track = assign_inds.tolist().index(idx)
             idx_other = assign_inds_other[i_track]
+            if idx_other not in sorted_inds_list[i_other]:
+                continue
+            if i == 0:
+                track_prob = track_prob_mat[idx, idx_other]
+            else:
+                track_prob = track_prob_mat[idx_other, idx]
+            if track_prob == 0.:
+                continue
 
             # show box (off by default)
             if show_box:

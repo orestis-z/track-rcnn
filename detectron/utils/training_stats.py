@@ -39,9 +39,9 @@ class TrainingStats(object):
 
     def __init__(self, model):
         # Window size for smoothing tracked values (with median filtering)
-        self.WIN_SZ = 20
+        self.WIN_SZ = cfg.TRAIN.EPOCH_PERIOD
         # Output logging period in SGD iterations
-        self.LOG_PERIOD = cfg.TRAIN.LOG_PERIOD
+        self.LOG_PERIOD = cfg.TRAIN.EPOCH_PERIOD
         self.smoothed_losses_and_metrics = {
             key: SmoothedValue(self.WIN_SZ)
             for key in model.losses + model.metrics
@@ -88,8 +88,8 @@ class TrainingStats(object):
         """Log the tracked statistics."""
         if (cur_iter % self.LOG_PERIOD == 0 or
                 cur_iter == cfg.SOLVER.MAX_ITER - 1):
-            stats = self.GetStats(cur_iter, lr)
-            self.stats_logger.log_json(stats)
+            stats_list = self.GetStats(cur_iter, lr)
+            self.stats_logger.log_json(*stats_list)
 
     def GetStats(self, cur_iter, lr):
         eta_seconds = self.iter_timer.average_time * (
@@ -98,7 +98,7 @@ class TrainingStats(object):
         eta = str(datetime.timedelta(seconds=int(eta_seconds)))
         mem_stats = c2_py_utils.GetGPUMemoryUsageStats()
         mem_usage = np.max(mem_stats['max_by_gpu'][:cfg.NUM_GPUS])
-        stats = dict(
+        stats_main = dict(
             iter=cur_iter,
             lr=float(lr),
             time=self.iter_timer.average_time,
@@ -109,6 +109,7 @@ class TrainingStats(object):
             ),
             mem=int(np.ceil(mem_usage / 1024 / 1024))
         )
+        stats_extra = {}
         for k, v in self.smoothed_losses_and_metrics.items():
-            stats[k] = v.GetMedianValue()
-        return stats
+            stats_extra[k] = v.GetMedianValue()
+        return stats_main, stats_extra

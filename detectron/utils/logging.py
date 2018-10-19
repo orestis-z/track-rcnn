@@ -44,9 +44,21 @@ class StatsLogger(object):
             open(self.log_path, "w").close()
         self.sort_keys = sort_keys
 
-    def log_json(self, stats):
-        json_stats = json.dumps(stats, sort_keys=self.sort_keys)
-        print('json_stats: {:s}'.format(json_stats))
+    def log_json(self, stats_main, stats_extra):
+        json_stats_extra = json.dumps(stats_extra, sort_keys=self.sort_keys)
+        stats_main.update(stats_extra)
+        json_stats = json.dumps(stats_main)
+        print("-" * 100)
+        print("iter: {}, loss: {:.4}, eta: {}, time: {:.0f} ms, lr: {:.3}".format(
+            stats_main['iter'],
+            stats_main['loss'],
+            stats_main['eta'],
+            stats_main['time'] * 1000,
+            stats_main['lr'],
+        ))
+        stats_str_list = ["{}: {:.3}".format(k, v) for k, v in stats_extra.items()]
+        stats_str_list.sort()
+        print(", ".join(stats_str_list))
         if self.save:
             with open(self.log_path, "a") as f:
                 f.write(json_stats + "\n")

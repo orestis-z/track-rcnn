@@ -139,7 +139,7 @@ __C.TRAIN.ASPECT_GROUPING = True
 __C.TRAIN.CONTINUE_ON_ERROR = False
 __C.TRAIN.SKIP_NON_MATCHING_WEIGHTS = False
 
-__C.TRAIN.LOG_PERIOD = 5
+__C.TRAIN.EPOCH_PERIOD = 20
 
 # ---------------------------------------------------------------------------- #
 # RPN training options
@@ -897,6 +897,9 @@ __C.TRCNN.LOSS_WEIGHT = 1.0
 
 __C.TRCNN.LOSS = b'L2'
 __C.TRCNN.OUTPUTS = b'MatchNet'
+
+__C.TRCNN.FRAME_DIST_MIN = 1
+__C.TRCNN.FRAME_DIST_MAX = 24
 
 
 # ---------------------------------------------------------------------------- #
