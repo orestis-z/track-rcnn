@@ -1,0 +1,71 @@
+MODEL:
+  TYPE: generalized_rcnn
+  CONV_BODY: FPN.add_fpn_ResNet50_conv5_body
+  NUM_CLASSES: 14
+  FASTER_RCNN: True
+  TRACKING_ON: True
+NUM_GPUS: 1
+SOLVER:
+  WEIGHT_DECAY: 0.0001
+  LR_POLICY: steps_with_decay
+  BASE_LR: 0.0025
+  GAMMA: 0.1
+  MAX_ITER: 9000
+  STEPS: [0, 3000, 6000]
+FPN:
+  FPN_ON: True
+  MULTILEVEL_ROIS: True
+  MULTILEVEL_RPN: True
+FAST_RCNN:
+  ROI_BOX_HEAD: head_builder.add_roi_2mlp_head
+  ROI_XFORM_METHOD: RoIAlign
+  ROI_XFORM_RESOLUTION: 7
+  ROI_XFORM_SAMPLING_RATIO: 2
+MRCNN:
+  ROI_MASK_HEAD: mask_rcnn_heads.mask_rcnn_fcn_head_v1up4convs
+  CONV_INIT: MSRAFill  # default GaussianFill
+KRCNN:
+  ROI_KEYPOINTS_HEAD: keypoint_rcnn_heads.add_roi_pose_head_v1convX
+  NUM_STACKED_CONVS: 8
+  NUM_KEYPOINTS: 17
+  USE_DECONV_OUTPUT: True
+  CONV_INIT: MSRAFill
+  CONV_HEAD_DIM: 512
+  UP_SCALE: 2
+  HEATMAP_SIZE: 28  # ROI_XFORM_RESOLUTION (14) * UP_SCALE (2) * USE_DECONV_OUTPUT (2)
+  ROI_XFORM_METHOD: RoIAlign
+  ROI_XFORM_RESOLUTION: 7
+  ROI_XFORM_SAMPLING_RATIO: 2
+  KEYPOINT_CONFIDENCE: bbox
+TRAIN:
+  WEIGHTS: outputs/train/mot_2017_train_02:mot_2017_train_04:mot_2017_train_05:mot_2017_train_09:mot_2017_train_10:mot_2017_train_11:mot_2017_train_13/generalized_rcnn/model_final.pkl
+  DATASETS: ('mot_2017_train_02', 'mot_2017_train_04', 'mot_2017_train_05', 'mot_2017_train_09', 'mot_2017_train_10', 'mot_2017_train_11', 'mot_2017_train_13')
+  SCALES: (640, )
+  BATCH_SIZE_PER_IM: 256
+  IMS_PER_BATCH: 1
+  USE_FLIPPED: False
+  FREEZE_CONV_BODY: True
+  CONTINUE_ON_ERROR: True
+  SKIP_NON_MATCHING_WEIGHTS: False
+  RPN_PRE_NMS_TOP_N: 100  # Per FPN level
+  RPN_POST_NMS_TOP_N: 100
+  DEBUG: False
+  EPOCH_PERIOD: 5
+  ASPECT_GROUPING: False
+TRCNN:
+  ROI_TRACKING_HEAD: track_rcnn_heads.add_track_head
+  LOSS: CrossEntropyBalanced
+  LOSS_WEIGHT: 1.0
+  ROI_XFORM_SAMPLING_RATIO: 2
+  FRAME_DIST_MIN: 1
+  FRAME_DIST_MAX: 36
+TEST:
+  # DATASETS: ('mot_2017_test_01', 'mot_2017_test_03', 'mot_2017_test_06', 'mot_2017_test_07', 'mot_2017_test_08', 'mot_2017_test_12', 'mot_2017_test_14')
+  DATASETS: ('mot_2017_train_04',)
+  SCALE: 640
+  NMS: 0.5
+  RPN_PRE_NMS_TOP_N: 100  # Per FPN level
+  RPN_POST_NMS_TOP_N: 100
+OUTPUT_DIR: outputs
+DATA_LOADER:
+  MINIBATCH_QUEUE_SIZE: 8

@@ -85,8 +85,8 @@ def parse_args():
     parser.add_argument(
         '--output-dir',
         dest='output_dir',
-        help='directory for visualization pdfs (default: /tmp/infer)',
-        default='/tmp/infer',
+        help='directory for visualization pdfs (default: outputs/infer)',
+        default='outputs/infer',
         type=str
     )
     parser.add_argument(

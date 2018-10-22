@@ -63,7 +63,7 @@ def parse_args():
         '--output-dir',
         dest='output_dir',
         help='output directory',
-        default='./tmp/vis-output',
+        default='outputs/vis-output',
         type=str
     )
     parser.add_argument(

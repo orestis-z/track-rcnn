@@ -208,13 +208,14 @@ def distinct_colors(n):
 
 def vis_image_pair_opencv(
         im_list, boxes_list, segms_list=None, keypoints_list=None, track=None, thresh=0.9, kp_thresh=2, track_thresh=0.7,
-        show_box=False, dataset=None, show_class=False, show_track=False):
+        show_box=False, dataset=None, show_class=False, show_track=False, show_track_ids=False, colors=None, color_inds_list=None):
     """Constructs a numpy array with the detections visualized."""
 
     classes_list = []
     keep_idx = [[], []]
     sorted_inds_list = []
     ret = []
+    color_inds_list_new = [None, None]
 
     for i, im in enumerate(im_list):
         boxes = boxes_list[i]
@@ -230,7 +231,8 @@ def vis_image_pair_opencv(
             classes_list.append(classes)
 
         if boxes is None or boxes.shape[0] == 0 or max(boxes[:, 4]) < thresh:
-            ret.append(im)
+            if im is not None:
+                ret.append(im)
             continue
 
         if segms is not None and len(segms) > 0:
@@ -256,6 +258,17 @@ def vis_image_pair_opencv(
     assert(len(sorted_inds_list[1]) == m_rois)
     assert(len(track) == n_rois * m_rois)
 
+    if color_inds_list is None:
+        color_inds_list = [None, None]
+    for i in xrange(2):
+        if color_inds_list[i] is not None:
+            assert(len(color_inds_list[i]) == len(boxes_list[i]))
+        else:
+            color_inds_list[i] = [None] * len(boxes_list[i])
+        color_inds_list_new[i] = [None] * len(boxes_list[i])
+
+    assign_inds_one = []
+
     track_prob_mat = np.zeros((n_rois, m_rois))
     for i in keep_idx[0]:
         for j in keep_idx[1]:
@@ -263,12 +276,15 @@ def vis_image_pair_opencv(
     track_prob_mat = np.where(track_prob_mat > track_thresh, track_prob_mat, np.zeros((n_rois, m_rois)))
     assign_inds_list = linear_sum_assignment(-track_prob_mat)
 
-    colors = distinct_colors(min(n_rois, m_rois))
+    if colors is None:
+        colors = distinct_colors(min(len(keep_idx[0]), len(keep_idx[1])))
     
     for i, im in enumerate(im_list):
         boxes = boxes_list[i]
         classes = classes_list[i]
         assign_inds = assign_inds_list[i]
+        if i > 0:
+            color_inds_list[i - 1] = color_inds_list_new[i - 1]
         for idx in keep_idx[i]:
             bbox = boxes[idx, :4]
             score = boxes[idx, -1]
@@ -276,47 +292,77 @@ def vis_image_pair_opencv(
                 continue
             i_other = (0 if i == 1 else 1)
             assign_inds_other = assign_inds_list[i_other]
-            i_track = assign_inds.tolist().index(idx)
-            idx_other = assign_inds_other[i_track]
+            i_assign = assign_inds.tolist().index(idx)
+            idx_other = assign_inds_other[i_assign]
             if idx_other not in keep_idx[i_other]:
                 continue
+  
             if i == 0:
-                track_prob = track_prob_mat[idx, idx_other]
-            else:
-                track_prob = track_prob_mat[idx_other, idx]
+                assign_inds_one.append(i_assign)
 
-            if track_prob < track_thresh:
-                continue
+            i_color = color_inds_list[i][idx]
+            if i_color is None:
+                if color_inds_list[i_other][idx_other] is None:
+                    color_inds = np.unique([x for x in color_inds_list[i_other] + color_inds_list[i] if x is not None])
+                    if len(color_inds):
+                        i_small_idx = np.where(np.not_equal(color_inds, np.array(range(len(color_inds)))))[0]
+                        if len(i_small_idx):
+                            i_color = i_small_idx[0]
+                        else:
+                            i_color = max(color_inds) + 1
+                    else:
+                        i_color = assign_inds_one.index(i_assign)
+                    assert(i_color not in color_inds)
+                else:
+                    i_color = color_inds_list[i_other][idx_other]
+            assert(i_color is not None)
 
-            # show box (off by default)
-            if show_box:
-                im = vis_bbox(
-                    im, (bbox[0], bbox[1], bbox[2] - bbox[0], bbox[3] - bbox[1]), color=colors[i_track])
+            color_inds_list_new[i][idx] = i_color
 
-            # show class (off by default)
-            class_str = ""
-            if show_class:
-                class_str = get_class_string(classes[idx], score, dataset)
+            if im is not None:
+                if i == 0:
+                    track_prob = track_prob_mat[idx, idx_other]
+                else:
+                    track_prob = track_prob_mat[idx_other, idx]
+                # show box (off by default)
+                if track_prob < track_thresh:
+                    color = (127.5, 127.5, 127.5)
+                    thick = 1
+                else:
+                    color = colors[i_color]
+                    thick = 2
+                if show_box:
+                    im = vis_bbox(
+                        im, (bbox[0], bbox[1], bbox[2] - bbox[0], bbox[3] - bbox[1]), color=color, thick=thick)
+
+                # show class (off by default)
+                class_str = ""
+                if show_class:
+                    class_str = get_class_string(classes[idx], score, dataset)
+                    if show_track:
+                        class_str += " | "
                 if show_track:
-                    class_str += " | "
-            if show_track:
-                class_str += "{:.2f}, {} --> {}".format(track_prob, idx, idx_other)
-            if show_class or show_track:
-                im = vis_class(im, (bbox[0], bbox[1] - 2), class_str)
+                    class_str += "{:.2f}".format(track_prob)
+                    if show_track_ids:
+                        class_str += ", {} --> {}".format(idx, idx_other)
+                if show_class or show_track:
+                    im = vis_class(im, (bbox[0], bbox[1] - 2), class_str)
 
-            # show mask
-            if segms is not None and len(segms) > idx:
-                color_mask = color_list[mask_color_id % len(color_list), 0:3]
-                mask_color_id += 1
-                im = vis_mask(im, masks[..., idx], color_mask)
+                # show mask
+                if segms is not None and len(segms) > idx:
+                    color_mask = color_list[mask_color_id % len(color_list), 0:3]
+                    mask_color_id += 1
+                    im = vis_mask(im, masks[..., idx], color_mask)
 
-            # show keypoints
-            if keypoints is not None and len(keypoints) > idx:
-                im = vis_keypoints(im, keypoints[idx], 2)
+                # show keypoints
+                if keypoints is not None and len(keypoints) > idx:
+                    im = vis_keypoints(im, keypoints[idx], 2)
 
-        ret.append(im)
+        if im is not None:
+            ret.append(im)
     
     ret.append(track_prob_mat)
+    ret += color_inds_list_new
 
     return ret
 
@@ -651,3 +697,13 @@ def vis_one_image(
     output_name = os.path.basename(im_name) + '.' + ext
     fig.savefig(os.path.join(output_dir, '{}'.format(output_name)), dpi=dpi)
     plt.close('all')
+
+
+def get_ax(n, figsize=(12, 12), shape=(), title=None):
+    _, ax = plt.subplots(n, 1, figsize=figsize)
+    for i in xrange(n):
+        ax[i].axis('off')
+        ax[i].set_ylim(shape[0], 0)
+        ax[i].set_xlim(0, shape[1])
+        ax[i].set_title(title, color='white')
+    return ax

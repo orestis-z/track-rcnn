@@ -50,7 +50,7 @@ logger = logging.getLogger(__name__)
 
 
 def im_detect_all(model, im, box_proposals, timers=None):
-    cls_boxes_list, cls_segms_list, cls_keyps_list, _, _, _ = im_detect_all_multi(model, [im], [box_proposals], timers, tracking=False)
+    cls_boxes_list, cls_segms_list, cls_keyps_list, _, _, _, _, _ = im_detect_all_multi(model, [im], [box_proposals], timers, tracking=False)
 
     return cls_boxes_list[0], cls_segms_list[0], cls_keyps_list[0]
 
@@ -152,7 +152,92 @@ def im_detect_all_multi(model, im_list, box_proposals_list, timers=None, trackin
     else:
         cls_track =  None
 
-    return cls_boxes_list, cls_segms_list, cls_keyps_list, cls_track, boxes_raw_list, im_scale_list
+    return cls_boxes_list, cls_segms_list, cls_keyps_list, cls_track, boxes_raw_list, boxes_list, im_scale_list, fpn_res_sum_list
+
+def im_detect_all_seq(model, im, fpn_res_sum_prev, boxes_prev, im_scale_prev, box_proposals, timers=None, tracking=True):
+    if timers is None:
+        timers = defaultdict(Timer)
+
+    fpn_res_sum = {}
+    fpn_res_blob_names = ['5_2', '4_5', '3_3', '2_2']
+    fpn_res_blob_names = ['fpn_res{}_sum'.format(name) for name in fpn_res_blob_names]
+
+    # Handle RetinaNet testing separately for now
+    if cfg.RETINANET.RETINANET_ON:
+        for im in im:
+            cls_boxes = test_retinanet.im_detect_bbox(model, im, timers)
+
+        return cls_boxes, None, None, None
+
+    timers['im_detect_bbox'].tic()
+    if cfg.TEST.BBOX_AUG.ENABLED:
+        scores, boxes, im_scale = im_detect_bbox_aug(model, im, box_proposals)
+    else:
+        scores, boxes, im_scale = im_detect_bbox(
+            model, im, cfg.TEST.SCALE, cfg.TEST.MAX_SIZE, boxes=box_proposals
+        )
+    for blob_name in fpn_res_blob_names:
+        fpn_res_sum[blob_name] = workspace.FetchBlob(core.ScopedName(blob_name))
+
+    timers['im_detect_bbox'].toc()
+
+    boxes_raw = boxes
+
+    # score and boxes are from the whole image after score thresholding and nms
+    # (they are not separated by class)
+    # cls_boxes boxes and scores are separated by class and in the format used
+    # for evaluating results
+    timers['misc_bbox'].tic()
+    scores, boxes, cls_boxes = box_results_with_nms_and_limit(scores, boxes)
+    timers['misc_bbox'].toc()
+
+    if cfg.MODEL.MASK_ON and boxes.shape[0] > 0:
+        timers['im_detect_mask'].tic()
+        if cfg.TEST.MASK_AUG.ENABLED:
+            masks = im_detect_mask_aug(model, im, boxes)
+        else:
+            masks = im_detect_mask(model, im_scale, boxes)
+        timers['im_detect_mask'].toc()
+
+        timers['misc_mask'].tic()
+        cls_segms = segm_results(
+            cls_boxes, masks, boxes, im.shape[0], im.shape[1]
+        )
+        timers['misc_mask'].toc()
+    else:
+        cls_segms = None
+
+    if cfg.MODEL.KEYPOINTS_ON and boxes.shape[0] > 0:
+        timers['im_detect_keypoints'].tic()
+        if cfg.TEST.KPS_AUG.ENABLED:
+            heatmaps = im_detect_keypoints_aug(model, im, boxes)
+        else:
+            heatmaps = im_detect_keypoints(model, im_scale, boxes)
+        timers['im_detect_keypoints'].toc()
+
+        timers['misc_keypoints'].tic()
+        cls_keyps = keypoint_results(cls_boxes, heatmaps, boxes)
+        timers['misc_keypoints'].toc()
+    else:
+        cls_keyps = None
+
+    if cfg.MODEL.TRACKING_ON and boxes.shape[0] > 0 and tracking:
+        for blob_name, val_prev in fpn_res_sum_prev.items():
+            workspace.FeedBlob(core.ScopedName(blob_name), np.concatenate((
+                val_prev,
+                fpn_res_sum[blob_name]
+            )))
+        timers['im_detect_track'].tic()
+        cls_track = im_detect_track(model, [im_scale_prev, im_scale], [boxes_prev, boxes])
+        timers['im_detect_track'].toc()
+
+        # timers['misc_track'].tic()
+        # track_results(cls_boxes, heatmaps, boxes)
+        # timers['misc_track'].toc()
+    else:
+        cls_track =  None
+
+    return cls_boxes, cls_segms, cls_keyps, cls_track, boxes_raw, boxes, im_scale, fpn_res_sum
 
 
 def im_conv_body_only(model, im, target_scale, target_max_size):
