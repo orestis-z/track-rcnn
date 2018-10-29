@@ -86,7 +86,7 @@ def train_model():
             )
             nu.save_model_to_weights_file(checkpoints[cur_iter], model)
 
-        if cur_iter == start_iter + training_stats.EPOCH_PERIOD:
+        if cur_iter == start_iter + cfg.TRAIN.EPOCH_PERIOD:
             # Reset the iteration timer to remove outliers from the first few
             # SGD iterations
             training_stats.ResetIterTimer()
