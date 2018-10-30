@@ -134,6 +134,8 @@ def create(model_type_func, train=False, gpu_id=0):
                         blob_references.append(model.net.GetBlobRef(core.ScopedName(blob_name)))
                     except KeyError, e:
                         logger.warn('Failed to freeze blob. {}'.format(e))
+                        if not cfg.TRAIN.CONTINUE_ON_ERROR:
+                            raise
         for blob_ref in blob_references:
             logger.info('Freezing blob. {}'.format(blob_ref))
             model.StopGradient(blob_ref, blob_ref)

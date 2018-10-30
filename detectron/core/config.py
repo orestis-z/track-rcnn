@@ -203,7 +203,7 @@ __C.TRAIN.COPY_WEIGHTS = False
 # Add StopGrad at a specified stage so the bottom layers are frozen
 __C.TRAIN.FREEZE_AT = 2
 
-# Add StopGrad at a specified nodes
+# Add StopGrad at specified nodes
 __C.TRAIN.FREEZE_BLOBS = []
 
 
@@ -875,13 +875,12 @@ __C.KRCNN.NORMALIZE_BY_VISIBLE_KEYPOINTS = True
 
 
 # ---------------------------------------------------------------------------- #
-# Track Mask R-CNN options ("TRCNN" = Mask R-CNN with Keypoint support)
+# Track Mask R-CNN options ("TRCNN" = Mask R-CNN with Tracking support)
 # ---------------------------------------------------------------------------- #
 __C.TRCNN = AttrDict()
 
 # The type of RoI head to use for instance tracking prediction
 # The string must match a function this is imported in modeling.model_builder
-# (e.g., 'keypoint_rcnn_heads.add_roi_pose_head_v1convX')
 __C.TRCNN.ROI_TRACKING_HEAD = b''
 
 # Hidden layer dimension when using an MLP for the RoI track head

@@ -3,17 +3,15 @@ MODEL:
   CONV_BODY: FPN.add_fpn_ResNet50_conv5_body
   NUM_CLASSES: 81
   FASTER_RCNN: True
-  # KEYPOINTS_ON: True
   MASK_ON: True
-  # TRACKING_ON: True
 NUM_GPUS: 1
 SOLVER:
   WEIGHT_DECAY: 0.0001
   LR_POLICY: steps_with_decay
   BASE_LR: 0.02
   GAMMA: 0.1
-  MAX_ITER: 130000
-  STEPS: [0, 100000, 120000]
+  MAX_ITER: 13000
+  STEPS: [0, 10000, 12000]
 FPN:
   FPN_ON: True
   MULTILEVEL_ROIS: True
@@ -46,9 +44,7 @@ KRCNN:
   KEYPOINT_CONFIDENCE: bbox
 TRAIN:
   WEIGHTS: https://s3-us-west-2.amazonaws.com/detectron/37697714/12_2017_baselines/e2e_keypoint_rcnn_R-50-FPN_s1x.yaml.08_44_03.qrQ0ph6M/output/train/keypoints_coco_2014_train%3Akeypoints_coco_2014_valminusminival/generalized_rcnn/model_final.pkl
-  # DATASETS: ('keypoints_coco_2014_train', 'keypoints_coco_2014_valminusminival')
   DATASETS: ('coco_2014_train', 'coco_2014_valminusminival')
-  # SCALES: (640, 672, 704, 736, 768, 800)
   SCALES: (800,)
   MAX_SIZE: 1333
   BATCH_SIZE_PER_IM: 512
@@ -57,7 +53,6 @@ TRAIN:
   FREEZE_CONV_BODY: True
   SKIP_NON_MATCHING_WEIGHTS: True
 TEST:
-  # DATASETS: ('keypoints_coco_2014_minival',)
   DATASETS: ('coco_2014_minival',)
   SCALE: 800
   MAX_SIZE: 1333
