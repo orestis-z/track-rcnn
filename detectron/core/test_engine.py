@@ -33,7 +33,7 @@ from detectron.core.config import cfg
 from detectron.core.config import get_output_dir
 from detectron.core.rpn_generator import generate_rpn_on_dataset
 from detectron.core.rpn_generator import generate_rpn_on_range
-from detectron.core.test import im_detect_all, im_detect_all_multi, im_detect_all_seq
+from detectron.core.test import im_detect_all, multi_im_detect_all
 from detectron.datasets import task_evaluation
 from detectron.datasets.json_dataset import JsonDataset
 from detectron.modeling import model_builder
@@ -238,7 +238,7 @@ def test_net(
     model = initialize_model_from_cfg(weights_file, gpu_id=gpu_id)
     num_images = len(roidb)
     num_classes = cfg.MODEL.NUM_CLASSES
-    all_boxes, all_segms, all_keyps = empty_results(num_classes, num_images)
+    all_boxes, all_segms, all_keyps, _ = empty_results(num_classes, num_images)
     timers = defaultdict(Timer)
     for i, entry in enumerate(roidb):
         if cfg.TEST.PRECOMPUTED_PROPOSALS:
@@ -331,6 +331,29 @@ def initialize_model_from_cfg(weights_file, gpu_id=0):
     model = model_builder.create(cfg.MODEL.TYPE, train=False, gpu_id=gpu_id)
     net_utils.initialize_gpu_from_weights_file(
         model, weights_file, gpu_id=gpu_id,
+    )
+    model_builder.add_inference_inputs(model)
+    workspace.CreateNet(model.net)
+    workspace.CreateNet(model.conv_body_net)
+    if cfg.MODEL.MASK_ON:
+        workspace.CreateNet(model.mask_net)
+    if cfg.MODEL.KEYPOINTS_ON:
+        workspace.CreateNet(model.keypoint_net)
+    if cfg.MODEL.TRACKING_ON:
+        workspace.CreateNet(model.track_net)
+    return model
+
+
+def initialize_siamese_model_from_cfg(weights_file_main, weights_file_extra, gpu_id=0, preffix=''):
+    """Initialize a model from the global cfg. Loads test-time weights and
+    creates the networks in the Caffe2 workspace.
+    """
+    model = model_builder.create(cfg.MODEL.TYPE, train=False, gpu_id=gpu_id)
+    net_utils.initialize_gpu_from_weights_file(
+        model, weights_file_main, gpu_id=gpu_id
+    )
+    net_utils.initialize_gpu_from_weights_file(
+        model, weights_file_extra, gpu_id=gpu_id, preffix=preffix
     )
     model_builder.add_inference_inputs(model)
     workspace.CreateNet(model.net)

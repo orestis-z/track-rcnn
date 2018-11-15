@@ -645,7 +645,7 @@ def vis_one_image(
                 ax.add_patch(polygon)
 
         # show keypoints
-        if keypoints is not None and len(keypoints) > i:
+        if keypoints is not None and len(keypoints) > i and dataset.classes[classes[i]] == 'person':
             kps = keypoints[i]
             plt.autoscale(False)
             for l in range(len(kp_lines)):

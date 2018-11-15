@@ -50,11 +50,12 @@ logger = logging.getLogger(__name__)
 
 
 def im_detect_all(model, im, box_proposals, timers=None):
-    cls_boxes_list, cls_segms_list, cls_keyps_list, _, _, _, _, _ = im_detect_all_multi(model, [im], [box_proposals], timers, tracking=False)
+    cls_boxes_list, cls_segms_list, cls_keyps_list, _, _, _, _, _ = multi_im_detect_all(model, [im], [box_proposals], timers, tracking=False)
 
     return cls_boxes_list[0], cls_segms_list[0], cls_keyps_list[0]
 
-def im_detect_all_multi(model, im_list, box_proposals_list, timers=None, tracking=True):
+
+def multi_im_detect_all(model, im_list, box_proposals_list, timers=None, tracking=True):
     if timers is None:
         timers = defaultdict(Timer)
 

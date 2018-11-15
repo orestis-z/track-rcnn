@@ -67,16 +67,45 @@ def SuffixNet(name, net, prefix_len, outputs):
 
     # Add suffix ops
     new_net.Proto().op.extend(net.Proto().op[prefix_len:])
+    return _add_externals(new_net, outputs)
+
+
+def RenameNet(name, net, preffix, outputs=[], excluded_nodes=[]):
+    new_net = core.Net(name)
+    for op in net.Proto().op:
+        new_op = core.CreateOperator(
+            op.type,
+            [("" if name in excluded_nodes else preffix + "_") + UnscopeName(name) for name in op.input],
+            [("" if name in excluded_nodes else preffix + "_") + UnscopeName(name) for name in op.output],
+            name=op.name,
+            control_input=op.control_input,
+            device_option=op.device_option,
+            arg=op.arg,
+            engine=op.engine)
+        new_net.Proto().op.extend([new_op])
+    return _add_externals(new_net, outputs)
+
+
+def _add_externals(net, outputs):
     # Add external input blobs
     # Treat any undefined blobs as external inputs
     input_names = [
-        i for op in new_net.Proto().op for i in op.input
-        if not new_net.BlobIsDefined(i)]
-    new_net.Proto().external_input.extend(input_names)
+        i for op in net.Proto().op for i in op.input
+        if not net.BlobIsDefined(i)]
+    net.Proto().external_input.extend(input_names)
     # Add external output blobs
     output_names = [str(o) for o in outputs]
-    new_net.Proto().external_output.extend(output_names)
-    return new_net, [new_net.GetBlobRef(o) for o in output_names]
+    net.Proto().external_output.extend(output_names)
+    return net, [net.GetBlobRef(o) for o in output_names]
+
+
+def MergeNets(name, nets):
+    net = nets[0].Clone(name)
+    for n in nets[1:]:
+        net.Proto().op.MergeFrom(n.Proto().op)
+        net.Proto().external_input.extend(n.Proto().external_input)
+        net.Proto().external_output.extend(n.Proto().external_output)
+    return net
 
 
 def BlobReferenceList(blob_ref_or_list):

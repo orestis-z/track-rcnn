@@ -499,6 +499,9 @@ class DetectionModelHelper(cnn.CNNModelHelper):
             self._SetNewLr(cur_lr, new_lr)
         return new_lr
 
+    def AddParams(self, params):
+        self.params += params
+
     def _SetNewLr(self, cur_lr, new_lr):
         """Do the actual work of updating the model and workspace blobs.
         """

@@ -216,7 +216,7 @@ def build_generic_detection_model(
                 blob_conv, spatial_scale_conv
             )
 
-        if not cfg.MODEL.RPN_ONLY:
+        if not cfg.MODEL.RPN_ONLY and cfg.MODEL.FASTER_RCNN:
             # Add the Fast R-CNN head
             head_loss_gradients['box'] = _add_fast_rcnn_head(
                 model, add_roi_box_head_func, blob_conv, dim_conv,
@@ -308,9 +308,19 @@ def _add_roi_mask_head(
         # This requires separate nets for box and mask prediction.
         # So we extract the mask prediction net, store it as its own network,
         # then restore model.net to be the bbox-only network
-        model.mask_net, blob_mask = c2_utils.SuffixNet(
-            'mask_net', model.net, len(bbox_net.op), blob_mask
-        )
+        if cfg.MODEL.SIAMESE_BACKBONE_ON and 'mask' in cfg.SIAMESE.HEADS:
+            mask_net_temp, blob_mask =  c2_utils.SuffixNet(
+                'mask_net_temp', model.net, len(bbox_net.op), blob_mask
+            )
+            model.mask_net, blob_mask = c2_utils.RenameNet(
+                "mask_net", mask_net_temp, cfg.SIAMESE.PREFFIX, output=blob_mask, excluded_nodes=[core.ScopedName("mask_rois_fpn{}".format(i)) for i in xrange(cfg.FPN.ROI_MIN_LEVEL, cfg.FPN.ROI_MAX_LEVEL + 1)] + [core.ScopedName("keypoint_rois_idx_restore_int32"), str(blob_mask)]
+            )
+            model.AddParams([core.BlobReference(input_name) for op in model.mask_net.Proto().op for input_name in op.input if input_name[-2] == "_"])
+            del mask_net_temp
+        else:
+            model.mask_net, blob_mask = c2_utils.SuffixNet(
+                'mask_net', model.net, len(bbox_net.op), blob_mask
+            )
         model.net._net = bbox_net
         loss_gradients = None
     else:
@@ -338,9 +348,19 @@ def _add_roi_keypoint_head(
         # This requires separate nets for box and keypoint prediction.
         # So we extract the keypoint prediction net, store it as its own
         # network, then restore model.net to be the bbox-only network
-        model.keypoint_net, keypoint_blob_out = c2_utils.SuffixNet(
-            'keypoint_net', model.net, len(bbox_net.op), blob_keypoint
-        )
+        if cfg.MODEL.SIAMESE_BACKBONE_ON and 'keypoint' in cfg.SIAMESE.HEADS:
+            keypoint_net_temp, _ =  c2_utils.SuffixNet(
+                'keypoint_net_temp', model.net, len(bbox_net.op), blob_keypoint
+            )
+            model.keypoint_net, _ = c2_utils.RenameNet(
+                "keypoint_net", keypoint_net_temp, cfg.SIAMESE.PREFFIX, excluded_nodes=[core.ScopedName("keypoint_rois_fpn{}".format(i)) for i in xrange(cfg.FPN.ROI_MIN_LEVEL, cfg.FPN.ROI_MAX_LEVEL + 1)] + [core.ScopedName("keypoint_rois_idx_restore_int32"), str(blob_keypoint)]
+            )
+            model.AddParams([core.BlobReference(input_name) for op in model.keypoint_net.Proto().op for input_name in op.input if input_name[-2] == "_"])
+            del keypoint_net_temp
+        else:
+            model.keypoint_net, _ = c2_utils.SuffixNet(
+                'keypoint_net', model.net, len(bbox_net.op), blob_keypoint
+            )
         model.net._net = bbox_net
         loss_gradients = None
     else:
@@ -369,9 +389,19 @@ def _add_roi_track_head(
         # This requires separate nets for box and track prediction.
         # So we extract the track prediction net, store it as its own
         # # network, then restore model.net to be the bbox-only network
-        model.track_net, track_blob_out = c2_utils.SuffixNet(
-            'track_net', model.net, len(bbox_net.op), blob_track
-        )
+        if cfg.MODEL.SIAMESE_BACKBONE_ON and 'track' in cfg.SIAMESE.HEADS:
+            track_net_temp, _ =  c2_utils.SuffixNet(
+                'track_net_temp', model.net, len(bbox_net.op), blob_track
+            )
+            model.track_net, _ = c2_utils.RenameNet(
+                "track_net", track_net_temp, cfg.SIAMESE.PREFFIX, excluded_nodes=[core.ScopedName("track_rois_fpn{}".format(i)) for i in xrange(cfg.FPN.ROI_MIN_LEVEL, cfg.FPN.ROI_MAX_LEVEL + 1)] + [core.ScopedName("track_rois_idx_restore_int32"), str(blob_track)]
+            )
+            model.AddParams([core.BlobReference(input_name) for op in model.track_net.Proto().op for input_name in op.input if input_name[-2] == "_"])
+            del track_net_temp
+        else:
+            model.track_net, _ = c2_utils.SuffixNet(
+                'track_net', model.net, len(bbox_net.op), blob_track
+            )
         model.net._net = bbox_net
         loss_gradients = None
     else:

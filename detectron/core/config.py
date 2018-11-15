@@ -135,9 +135,6 @@ __C.TRAIN.PROPOSAL_FILES = ()
 # faster)
 __C.TRAIN.ASPECT_GROUPING = True
 
-__C.TRAIN.CONTINUE_ON_ERROR = False
-__C.TRAIN.SKIP_NON_MATCHING_WEIGHTS = False
-
 __C.TRAIN.EPOCH_PERIOD = 20
 
 # ---------------------------------------------------------------------------- #
@@ -489,6 +486,8 @@ __C.MODEL.KEYPOINTS_ON = False
 # Indicates the model makes tracking predictions
 __C.MODEL.TRACKING_ON = False
 
+__C.MODEL.SIAMESE_BACKBONE_ON = False
+
 # Indicates the model's computation terminates with the production of RPN
 # proposals (i.e., it outputs proposals ONLY, no actual object detections)
 __C.MODEL.RPN_ONLY = False
@@ -498,6 +497,7 @@ __C.MODEL.RPN_ONLY = False
 __C.MODEL.EXECUTION_TYPE = 'dag'
 
 __C.MODEL.FORWARD_ONLY = False
+
 
 # ---------------------------------------------------------------------------- #
 # RetinaNet options
@@ -901,6 +901,18 @@ __C.TRCNN.FRAME_DIST_MAX = 24
 
 
 # ---------------------------------------------------------------------------- #
+# Siamese Backbone options
+# ---------------------------------------------------------------------------- #
+__C.SIAMESE = AttrDict()
+
+__C.SIAMESE.MERGE_AT = 2
+
+__C.SIAMESE.PREFFIX = u'sia'
+
+__C.SIAMESE.HEADS = [] # mask, keypoint, track
+
+
+# ---------------------------------------------------------------------------- #
 # R-FCN options
 # ---------------------------------------------------------------------------- #
 __C.RFCN = AttrDict()
@@ -1025,6 +1037,9 @@ __C.DOWNLOAD_CACHE = '/tmp/detectron-download-cache'
 
 # visualize net graph
 __C.VIS_NET = False
+
+__C.CONTINUE_ON_ERROR = False
+__C.SKIP_NON_MATCHING_WEIGHTS = False
 
 # ---------------------------------------------------------------------------- #
 # Cluster options

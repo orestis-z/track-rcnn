@@ -50,7 +50,7 @@ def initialize_from_weights_file(model, weights_file, broadcast=True):
         broadcast_parameters(model)
 
 
-def initialize_gpu_from_weights_file(model, weights_file, gpu_id=0):
+def initialize_gpu_from_weights_file(model, weights_file, gpu_id=0, preffix=''):
     """Initialize a network with ops on a specific GPU.
 
     If you use CUDA_VISIBLE_DEVICES to target specific GPUs, Caffe2 will
@@ -68,6 +68,9 @@ def initialize_gpu_from_weights_file(model, weights_file, gpu_id=0):
         # Backwards compat--dictionary used to be only blobs, now they are
         # stored under the 'blobs' key
         src_blobs = src_blobs['blobs']
+    if preffix:
+        for key in src_blobs.keys():
+            src_blobs[preffix + "_" + key] = src_blobs.pop(key)
     # Initialize weights on GPU gpu_id only
     unscoped_param_names = OrderedDict()  # Print these out in model order
     for blob in model.params:
@@ -86,7 +89,7 @@ def initialize_gpu_from_weights_file(model, weights_file, gpu_id=0):
             else:
                 src_name = unscoped_param_name
             if src_name not in src_blobs:
-                logger.info('{:s} not found'.format(src_name))
+                logger.info('{:s} not found (prefix: {})'.format(src_name, preffix))
                 continue
             dst_name = core.ScopedName(unscoped_param_name)
             has_momentum = src_name + '_momentum' in src_blobs
@@ -137,7 +140,7 @@ def initialize_gpu_from_weights_file(model, weights_file, gpu_id=0):
                 workspace.FeedBlob(
                     '__preserve__/{:s}'.format(src_name), src_blobs[src_name])
                 logger.info(
-                    '{:s} preserved in workspace (unused)'.format(src_name))
+                    '{:s} preserved in workspace (unused) (prefix: {})'.format(src_name, preffix))
 
 
 def save_model_to_weights_file(weights_file, model):
