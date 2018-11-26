@@ -201,7 +201,13 @@ _DATASETS = {
             _DATA_DIR + '/VOC2012/annotations/voc_2012_val.json',
         _DEVKIT_DIR:
             _DATA_DIR + '/VOC2012/VOCdevkit2012'
-    }
+    },
+    'mot_2017_overtrain': {
+        _IM_DIR:
+            _DATA_DIR + '/MOT17/train/overtrain/img1',
+        _ANN_FN:
+            _DATA_DIR + '/MOT17/train/overtrain/gt/gt.json',
+    },
 }
 
 _mot_train_sequence_idx = ["02", "04", "05", "09", "10", "11", "13"]

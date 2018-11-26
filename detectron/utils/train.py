@@ -71,7 +71,7 @@ def train_model():
         except:
             error_count += 1
             logger.warn("Error in iter {}, error count: {}".format(cur_iter, error_count))
-            if not cfg.TRAIN.CONTINUE_ON_ERROR:
+            if not cfg.CONTINUE_ON_ERROR:
                 raise
 
         if cur_iter == start_iter:

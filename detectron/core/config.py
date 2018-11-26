@@ -879,7 +879,7 @@ __C.TRCNN = AttrDict()
 
 # The type of RoI head to use for instance tracking prediction
 # The string must match a function this is imported in modeling.model_builder
-__C.TRCNN.ROI_TRACKING_HEAD = b''
+__C.TRCNN.ROI_TRACKING_HEAD = ''
 
 # Hidden layer dimension when using an MLP for the RoI track head
 __C.TRCNN.MLP_HEAD_DIM = 256
@@ -907,7 +907,7 @@ __C.SIAMESE = AttrDict()
 
 __C.SIAMESE.MERGE_AT = 2
 
-__C.SIAMESE.PREFFIX = u'sia'
+__C.SIAMESE.PREFFIX = 'sia'
 
 __C.SIAMESE.HEADS = [] # mask, keypoint, track
 

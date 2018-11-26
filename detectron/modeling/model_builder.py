@@ -134,7 +134,7 @@ def create(model_type_func, train=False, gpu_id=0):
                         blob_references.append(model.net.GetBlobRef(core.ScopedName(blob_name)))
                     except KeyError, e:
                         logger.warn('Failed to freeze blob. {}'.format(e))
-                        if not cfg.TRAIN.CONTINUE_ON_ERROR:
+                        if not cfg.CONTINUE_ON_ERROR:
                             raise
         for blob_ref in blob_references:
             logger.info('Freezing blob. {}'.format(blob_ref))
@@ -216,7 +216,7 @@ def build_generic_detection_model(
                 blob_conv, spatial_scale_conv
             )
 
-        if not cfg.MODEL.RPN_ONLY and cfg.MODEL.FASTER_RCNN:
+        if not cfg.MODEL.RPN_ONLY:
             # Add the Fast R-CNN head
             head_loss_gradients['box'] = _add_fast_rcnn_head(
                 model, add_roi_box_head_func, blob_conv, dim_conv,

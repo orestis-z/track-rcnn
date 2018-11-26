@@ -111,7 +111,7 @@ def initialize_gpu_from_weights_file(model, weights_file, gpu_id=0, preffix=''):
                             src_name,
                             ws_blob.shape,
                             src_blobs[src_name].shape)
-                    if cfg.TRAIN.SKIP_NON_MATCHING_WEIGHTS:
+                    if cfg.SKIP_NON_MATCHING_WEIGHTS:
                         logger.warning(msg)
                         continue
                     else:
