@@ -129,11 +129,11 @@ def main(args):
             if cfg.MODEL.TRACKING_ON:
                 roidb_min = [roidb[0], roidb[1]]
                 im_list = [cv2.imread(e['image']) for e in roidb_min]
-                infer_engine.im_detect_all_multi(
+                infer_engine.multi_im_detect_all(
                     model, im_list, [None, None]
                 )
             else:
-                infer_engine.im_detect_all_multi(
+                infer_engine.im_detect_all(
                     model, roidb[0]['image'], None
                 )
     else:

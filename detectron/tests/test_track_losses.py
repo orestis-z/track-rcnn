@@ -47,32 +47,34 @@ class TrackLossesTest(unittest.TestCase):
             loss_track_non_matches = loss_track_non_matches_raw / np.sum(track_int32_non_matches)
             loss_track_raw = 0.5 * (loss_track_matches + loss_track_non_matches)
         else:
-            raise
+            # raise NotImplementedError,
+            print('Test case for loss "{}" not implemented yet'.format(cfg.TRCNN.LOSS))
 
         return cfg.TRCNN.LOSS_WEIGHT * loss_track_raw
 
     def test_gpu_random_input_gpu(self):
         X = np.random.rand(1, 6).astype(np.float32)
         X_gt = np.random.randint(2, size=(1, 6)).astype(np.float32)
-        for loss in ['Cosine', 'L2', 'L2Balanced']:
+        for loss in ['Cosine', 'L2', 'L2Balanced', 'CrossEntropy', 'CrossEntropyBalanced', 'CrossEntropyWeighted']:
+            cfg.immutable(False)
             cfg.TRCNN.LOSS = loss
             assert_and_infer_cfg(cache_urls=False)
             Y_exp = self._add_track_losses_np(X.copy(), X_gt.copy())
             with core.DeviceScope(core.DeviceOption(caffe2_pb2.CUDA, 0)):
                 Y_act = self._add_track_losses(X.copy(), X_gt.copy())
             np.testing.assert_allclose(Y_act, Y_exp, rtol=1e-06)
-            cfg.immutable(False)
 
     def test_gpu_random_input(self):
         X = np.random.rand(1, 6).astype(np.float32)
         X_gt = np.random.randint(2, size=(1, 6)).astype(np.float32)
-        for loss in ['Cosine', 'L2', 'L2Balanced']:
+        for loss in ['Cosine', 'L2', 'L2Balanced', 'CrossEntropy', 'CrossEntropyBalanced', 'CrossEntropyWeighted']:
+            cfg.immutable(False)
             cfg.TRCNN.LOSS = loss
             assert_and_infer_cfg(cache_urls=False)
             Y_exp = self._add_track_losses_np(X.copy(), X_gt.copy())
             Y_act = self._add_track_losses(X.copy(), X_gt.copy())
             np.testing.assert_allclose(Y_act, Y_exp, rtol=1e-06)
-            cfg.immutable(False)
+
 
 if __name__ == '__main__':
     workspace.GlobalInit(['caffe2', '--caffe2_log_level=0'])

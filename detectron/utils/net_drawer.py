@@ -2,6 +2,7 @@ import pydot
 import numpy as np
 
 from caffe2.python import net_drawer
+from caffe2.python import workspace
 
 def defaultdict(default_type):
     class DefaultDict(dict):

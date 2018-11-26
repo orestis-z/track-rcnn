@@ -61,12 +61,12 @@ def add_track_outputs(model, blob_in, dim):
 
     model.Tile(["track_fc_two", "track_n_rois_one"], "track_fc_two_tile", axis=0) # (n_pairs, mlp_dim)
 
-    if cfg.TRCNN.OUTPUTS == 'Cosine':
+    if cfg.TRCNN.OUTPUT == 'Cosine':
         model.CosineSimilarity(["track_fc_one_repeat", "track_fc_two_tile"], "track_cos_similarity") # (n_pairs,)
      
         blob_out = model.ExpandDims("track_cos_similarity", "track_similarity", dims=[0]) # (1, n_pairs)
 
-    elif cfg.TRCNN.OUTPUTS == 'MatchNet':
+    elif cfg.TRCNN.OUTPUT == 'MatchNet':
         hidden_dim = cfg.TRCNN.MLP_HIDDEN_DIM
         model.Concat(["track_fc_one_repeat", "track_fc_two_tile"], "track_pairs")
         model.FC(
@@ -116,7 +116,7 @@ def add_track_losses(model):
     if cfg.TRCNN.LOSS == 'Cosine': # L_cos
         model.CosineSimilarity(["track_similarity", "track_int32"], "track_cosine_similarity")
         model.Negative("track_cosine_similarity", "track_cosine_similarity_neg")
-        model.Add(["track_cosine_similarity_neg", "ONE"], "loss_track_raw")
+        model.Add(["track_cosine_similarity_neg", "ONE_float32"], "loss_track_raw")
     elif cfg.TRCNN.LOSS == 'L2': # L2sq / n_pairs
         model.SquaredL2Distance(["track_similarity", "track_int32"], "track_l2_loss")
         model.Shape("track_similarity", "track_n_pairs", axes=[1])
@@ -124,11 +124,10 @@ def add_track_losses(model):
         model.StopGradient("track_n_pairs_float", "track_n_pairs_float")
         model.Div(["track_l2_loss", "track_n_pairs_float"], "loss_track_raw")
     elif cfg.TRCNN.LOSS == 'L2Balanced': # 0.5 * (L2sq_match / n_match_pairs + L2sq_nomatch / n_nomatch_pairs)
-        model.ExpandDims("track_int32", "track_int32_", dims=[0])
-        b = model.Cast("track_int32_", "track_float32", to=1)
+        b = model.Cast("track_int32", "track_float32", to=1)
         model.StopGradient(b, b)
         model.Negative("track_float32", "track_float32_neg")
-        b = model.Add(["track_float32_neg", "ONE"], "track_float32_nomatch")
+        b = model.Add(["track_float32_neg", "ONE_float32"], "track_float32_nomatch")
         model.StopGradient(b, b)
         model.Sub(["track_similarity", "track_float32"], "track_delta")
         model.Sqr("track_delta", "track_delta_sq")
@@ -143,14 +142,8 @@ def add_track_losses(model):
         model.Add(["loss_track_match", "loss_track_nomatch"], "loss_track_sum")
         model.Scale("loss_track_sum", "loss_track_raw", scale=0.5)
     elif cfg.TRCNN.LOSS == 'CrossEntropy':
-        # model.Transpose("track_int32", "track_match_int32")
-        # model.Sub(["ONE", "track_match_int32"], "track_nomatch_int32")
-        # model.Concat(["track_match_int32", "track_nomatch_int32"], "track_labels_int32")
         model.SoftmaxWithLoss(['track_score', 'track_int32'], ['track_prob', 'loss_track_raw'])
     elif cfg.TRCNN.LOSS == 'CrossEntropyBalanced':
-        # model.Transpose("track_int32", "track_match_int32")
-        # model.Sub(["ONE", "track_match_int32"], "track_nomatch_int32")
-        # model.Concat(["track_match_int32", "track_nomatch_int32"], "track_labels_int32")
         model.Sub(["ONE_int32", "track_int32"], "track_nomatch_int32")
         model.LengthsTile(["track_score", "track_int32"], "track_score_match")
         model.LengthsTile(["track_score", "track_nomatch_int32"], "track_score_nomatch")
