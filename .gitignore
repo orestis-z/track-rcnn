@@ -25,3 +25,6 @@ detectron/utils/cython_*.c
 
 # Outputs
 outputs/
+
+# ipython notebook
+.ipynb_checkpoints
