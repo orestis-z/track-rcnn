@@ -63,7 +63,10 @@ def parse_args():
         type=float
     )
     parser.add_argument(
-        '--im_dir', help='image or folder of images', default=None
+        '--im-dir',
+        dest='im_dir',
+        help='image or folder of images',
+        default=None
     )
     parser.add_argument(
         'opts',
@@ -99,7 +102,7 @@ def main(args):
         im_two = cv2.imread(im_paths[i+1])
         with c2_utils.NamedCudaScope(0):
             print("Processing {}, {}, {}".format(args.output_dir, im_names[i], im_names[i + 1]))
-            cls_boxes_list, cls_segms_list, cls_keyps_list, cls_track, _, _, _, _ = infer_engine.im_detect_all_multi(
+            cls_boxes_list, cls_segms_list, cls_keyps_list, cls_track, _, _, _, _ = infer_engine.multi_im_detect_all(
             model, [im_one, im_two], [None, None])
         im_pred_one, im_pred_two, _, _, _ = vis_utils.vis_image_pair_opencv(
             [im_one, im_two],

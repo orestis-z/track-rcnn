@@ -111,8 +111,6 @@ def add_track_losses(model):
     model.ConstantFill([], "ZERO_int32", value=0, dtype=caffe2_pb2.TensorProto.INT32, shape=(1,))
     model.ConstantFill([], "ONE_float32", value=1.0)
 
-    model.StopGradient("track_int32", "track_int32")
-
     if cfg.TRCNN.LOSS == 'Cosine': # L_cos
         model.CosineSimilarity(["track_similarity", "track_int32"], "track_cosine_similarity")
         model.Negative("track_cosine_similarity", "track_cosine_similarity_neg")
@@ -155,9 +153,7 @@ def add_track_losses(model):
         model.Tile(['ZERO_int32', "track_n_nomatch"], "ZEROs_int32", axis=0)
         _, loss_track_match = model.SoftmaxWithLoss(['track_score_match', 'ONEs_int32'], ['track_prob_match', 'loss_track_match'])
         _, loss_track_nomatch = model.SoftmaxWithLoss(['track_score_nomatch', 'ZEROs_int32'], ['track_prob_nomatch', 'loss_track_nomatch'])
-        loss_gradients = blob_utils.get_loss_gradients(model, [loss_track_match, loss_track_nomatch])
-        model.AddLosses(['loss_track_match', 'loss_track_nomatch'])
-        return loss_gradients
+        model.Sum(['loss_track_match', 'loss_track_nomatch'], "loss_track_raw")
     elif cfg.TRCNN.LOSS == 'CrossEntropyWeighted':
         model.Sub(["ONE_int32", "track_int32"], "track_nomatch_int32")
         model.SumElementsInt("track_int32", "track_n_match_")
@@ -198,14 +194,18 @@ def add_track_head(model, blob_in, dim_in, spatial_scale):
         sampling_ratio=cfg.TRCNN.ROI_XFORM_SAMPLING_RATIO,
         spatial_scale=spatial_scale
     )
-    model.FC(
-        roi_feat,
-        "track_fc",
-        dim_in * roi_size * roi_size,
-        head_dim,
-        weight_init=gauss_fill(0.01),
-        bias_init=const_fill(0.0),
-    )
-    track_fc = model.Relu("track_fc", "track_fc")
-
-    return track_fc, head_dim
+    if cfg.TRCNN.MLP_HEAD_ON:
+        model.FC(
+            roi_feat,
+            "track_fc",
+            dim_in * roi_size * roi_size,
+            head_dim,
+            weight_init=gauss_fill(0.01),
+            bias_init=const_fill(0.0),
+        )
+        track_fc = model.Relu("track_fc", "track_fc")
+        return track_fc, head_dim
+    else:
+        model.Flatten(roi_feat, "track_fc")
+        track_fc = model.Relu("track_fc", "track_fc")
+        return roi_feat, dim_in * roi_size * roi_size

@@ -5,7 +5,7 @@ MODEL:
   CONV_BODY: FPN.add_fpn_ResNet50_conv5_body
   NUM_CLASSES: 14
   FASTER_RCNN: True
-  # RPN_ONLY: True
+  RPN_ONLY: True
   TRACKING_ON: True
 NUM_GPUS: 1
 SOLVER:
@@ -13,8 +13,8 @@ SOLVER:
   LR_POLICY: steps_with_decay
   BASE_LR: 0.0025
   GAMMA: 0.1
-  MAX_ITER: 18000
-  STEPS: [0, 12000, 16000]
+  MAX_ITER: 90000
+  STEPS: [0, 60000, 80000]
 FPN:
   FPN_ON: True
   MULTILEVEL_ROIS: True
@@ -27,22 +27,19 @@ FAST_RCNN:
 TRCNN:
   ROI_TRACKING_HEAD: track_rcnn_heads.add_track_head
   LOSS: CrossEntropyBalanced
-  LOSS_WEIGHT: 1.0
   ROI_XFORM_SAMPLING_RATIO: 2
   FRAME_DIST_MIN: 1
   FRAME_DIST_MAX: 36
 TRAIN:
-  WEIGHTS: https://s3-us-west-2.amazonaws.com/detectron/35859007/12_2017_baselines/e2e_mask_rcnn_R-50-FPN_2x.yaml.01_49_07.By8nQcCH/output/train/coco_2014_train%3Acoco_2014_valminusminival/generalized_rcnn/model_final.pkl
+  WEIGHTS: outputs/train/mot_2017_overtrain/generalized_rcnn/model_final.pkl
   DATASETS: ('mot_2017_train_02', 'mot_2017_train_04', 'mot_2017_train_05', 'mot_2017_train_09', 'mot_2017_train_10', 'mot_2017_train_11', 'mot_2017_train_13')
   SCALES: (800,)
   BATCH_SIZE_PER_IM: 512
-  IMS_PER_BATCH: 1
   USE_FLIPPED: False
   FREEZE_CONV_BODY: True
-  RPN_PRE_NMS_TOP_N: 1000  # Per FPN level
-  RPN_POST_NMS_TOP_N: 500
+  RPN_PRE_NMS_TOP_N: 600  # Per FPN level
+  RPN_POST_NMS_TOP_N: 300
   DEBUG: False
-  EPOCH_PERIOD: 5
   ASPECT_GROUPING: False
 TEST:
   DATASETS: ('mot_2017_test_01', 'mot_2017_test_03', 'mot_2017_test_06', 'mot_2017_test_07', 'mot_2017_test_08', 'mot_2017_test_12', 'mot_2017_test_14')

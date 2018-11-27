@@ -35,6 +35,7 @@ import numpy as np
 import os
 import re
 
+from c2board.writer import SummaryWriter
 from caffe2.python import memonger
 from caffe2.python import workspace
 
@@ -54,6 +55,9 @@ def train_model():
     if 'final' in checkpoints:
         # The final model was found in the output directory, so nothing to do
         return checkpoints
+
+    with SummaryWriter(log_dir=get_output_dir(cfg.TRAIN.DATASETS)+"/events") as writer:
+        writer.write_graph([model.net])
 
     logger = logging.getLogger(__name__)
     setup_model_for_training(model, weights_file, output_dir)

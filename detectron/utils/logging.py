@@ -28,6 +28,8 @@ import numpy as np
 import smtplib
 import sys, os
 
+from c2board.writer import SummaryWriter
+
 from detectron.core.config import cfg
 from detectron.core.config import get_output_dir
 
@@ -42,7 +44,6 @@ class StatsLogger(object):
         self.sort_keys = sort_keys
 
     def log_json(self, stats_main, stats_extra):
-        json_stats_extra = json.dumps(stats_extra, sort_keys=self.sort_keys)
         stats_main.update(stats_extra)
         json_stats = json.dumps(stats_main)
         print("-" * 100)
@@ -59,6 +60,20 @@ class StatsLogger(object):
         if self.save:
             with open(self.log_path, "a") as f:
                 f.write(json_stats + "\n")
+
+        # tensorboard
+        stats_main.pop('eta', None)
+        i = stats_main.pop('iter', None)
+        for key in stats_main.keys():
+            key_split = key.split("_")
+            if len(key_split) == 1:
+                tag = "main"
+            elif key_split[0] == "loss":
+                tag = key_split[1]
+            stats_main["{}/{}".format(tag, key)] = stats_main[key]
+            stats_main.pop(key, None)
+        with SummaryWriter(log_dir=get_output_dir(cfg.TRAIN.DATASETS)+"/events") as writer:
+            writer.write_scalars(stats_main, i)
 
 
 class SmoothedValue(object):

@@ -62,7 +62,17 @@ def parse_args():
         type=float
     )
     parser.add_argument(
-        '--im_dir', help='image or folder of images', default=None
+        '--im-dir',
+        dest='im_dir',
+        help='image or folder of images',
+        default=None
+    )
+    parser.add_argument(
+        '--n-colors',
+        dest='n_colors',
+        help='must be equal to the maximum number of object-pairs per image pair.',
+        default=10,
+        type=int
     )
     parser.add_argument(
         'opts',
@@ -93,13 +103,13 @@ def main(args):
     assert_and_infer_cfg(cache_urls=False)
     model = infer_engine.initialize_model_from_cfg(args.weights)
 
-    colors = vis_utils.distinct_colors(10)
+    colors = vis_utils.distinct_colors(args.n_colors)
 
     im_list = [cv2.imread(im_path) for im_path in im_paths[:2]]
     with c2_utils.NamedCudaScope(0):
         print("Processing {}".format(im_paths[0]))
         print("Processing {}".format(im_paths[1]))
-        cls_boxes_list, cls_segms_list, cls_keyps_list, cls_track, _, boxes_list, im_scale_list, fpn_res_sum_list = infer_engine.im_detect_all_multi(
+        cls_boxes_list, cls_segms_list, cls_keyps_list, cls_track, _, boxes_list, im_scale_list, fpn_res_sum_list = infer_engine.multi_im_detect_all(
             model, im_list, [None, None])
 
     fpn_res_sum_prev = fpn_res_sum_list[1]

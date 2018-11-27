@@ -882,6 +882,7 @@ __C.TRCNN = AttrDict()
 __C.TRCNN.ROI_TRACKING_HEAD = ''
 
 # Hidden layer dimension when using an MLP for the RoI track head
+__C.TRCNN.MLP_HEAD_ON = True
 __C.TRCNN.MLP_HEAD_DIM = 256
 __C.TRCNN.MLP_HIDDEN_DIM = 512
 
