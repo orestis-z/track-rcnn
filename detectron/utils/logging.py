@@ -66,10 +66,13 @@ class StatsLogger(object):
         i = stats_main.pop('iter', None)
         for key in stats_main.keys():
             key_split = key.split("_")
-            if len(key_split) == 1:
-                tag = "main"
-            elif key_split[0] == "loss":
-                tag = key_split[1]
+            if key_split[0] == "loss":
+                if len(key_split) > 1 and key_split[1] == "rpn":
+                    tag = "loss_rpn"
+                else:
+                    tag = "loss"
+            else:
+                tag = "meta"
             stats_main["{}/{}".format(tag, key)] = stats_main[key]
             stats_main.pop(key, None)
         with SummaryWriter(log_dir=get_output_dir(cfg.TRAIN.DATASETS)+"/events") as writer:
