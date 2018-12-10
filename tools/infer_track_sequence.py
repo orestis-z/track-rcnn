@@ -113,7 +113,7 @@ def main(args):
             model, im_list, [None, None])
 
     fpn_res_sum_prev = fpn_res_sum_list[1]
-    cls_boxes_prev = list(cls_boxes_list[1])
+    cls_boxes_prev = cls_boxes_list[1]
     cls_segms_prev = cls_segms_list[1]
     cls_keyps_prev = cls_keyps_list[1]
     boxes_prev = boxes_list[1]
@@ -163,8 +163,8 @@ def main(args):
         cls_boxes_prev = cls_boxes
         cls_segms_prev = cls_segms
         cls_keyps_prev = cls_keyps
-        im_scale_prev = im_scale
         boxes_prev = boxes
+        im_scale_prev = im_scale
         color_inds_prev = color_inds
         fpn_res_sum_prev = fpn_res_sum
 

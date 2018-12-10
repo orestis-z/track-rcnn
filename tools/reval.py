@@ -96,6 +96,7 @@ def do_reval(dataset_name, output_dir, args):
         dets['all_boxes'],
         dets['all_segms'],
         dets['all_keyps'],
+        dets['all_track'],
         output_dir,
         use_matlab=args.matlab_eval
     )

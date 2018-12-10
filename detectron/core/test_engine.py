@@ -105,7 +105,6 @@ def run_inference(
                     proposal_file,
                     output_dir,
                     multi_gpu=multi_gpu_testing,
-                    multi_batch=cfg.MODEL.TRACKING_ON
                 )
                 all_results.update(results)
 
@@ -143,7 +142,6 @@ def test_net_on_dataset(
     proposal_file,
     output_dir,
     multi_gpu=False,
-    multi_batch=False,
     gpu_id=0
 ):
     """Run inference on a dataset."""
@@ -155,16 +153,14 @@ def test_net_on_dataset(
         all_boxes, all_segms, all_keyps = multi_gpu_test_net_on_dataset(
             weights_file, dataset_name, proposal_file, num_images, output_dir
         )
-    elif multi_batch:
-        raise NotImplementedError("Multi-batch inference not implement yet")
     else:
-        all_boxes, all_segms, all_keyps = test_net(
+        all_boxes, all_segms, all_keyps, all_track = test_net(
             weights_file, dataset_name, proposal_file, output_dir, gpu_id=gpu_id
         )
     test_timer.toc()
     logger.info('Total inference time: {:.3f}s'.format(test_timer.average_time))
     results = task_evaluation.evaluate_all(
-        dataset, all_boxes, all_segms, all_keyps, output_dir
+        dataset, all_boxes, all_segms, all_keyps, all_track, output_dir
     )
     return results
 
@@ -238,7 +234,17 @@ def test_net(
     model = initialize_model_from_cfg(weights_file, gpu_id=gpu_id)
     num_images = len(roidb)
     num_classes = cfg.MODEL.NUM_CLASSES
-    all_boxes, all_segms, all_keyps, _ = empty_results(num_classes, num_images)
+    all_boxes, all_segms, all_keyps, all_track = empty_results(num_classes, num_images)
+    box_proposals_prev = None
+    im_prev = None
+    fpn_res_sum_prev = None
+    cls_boxes_prev = None
+    cls_segms_prev = None
+    cls_keyps_prev = None
+    boxes_prev = None
+    im_scale_prev = None
+    color_inds_prev = None
+    colors = vis_utils.distinct_colors(20)
     timers = defaultdict(Timer)
     for i, entry in enumerate(roidb):
         if cfg.TEST.PRECOMPUTED_PROPOSALS:
@@ -257,15 +263,44 @@ def test_net(
 
         im = cv2.imread(entry['image'])
         with c2_utils.NamedCudaScope(gpu_id):
-            cls_boxes_i, cls_segms_i, cls_keyps_i = im_detect_all(
-                model, im, box_proposals, timers
-            )
+            if cfg.MODEL.TRACKING_ON:
+                if i == 0:
+                    im_prev = im
+                    box_proposals_prev = box_proposals
+                    cls_boxes_i, cls_segms_i, cls_keyps_i = im_detect_all(
+                        model, im, box_proposals, timers
+                    )
+                    cls_track_i = None
+                elif i == 1:
+                    cls_boxes_list, cls_segms_list, cls_keyps_list, cls_track_i, boxes_raw_list, boxes_list, im_scale_list, fpn_res_sum_list = multi_im_detect_all(
+                        model, [im_prev, im], [box_proposals_prev, box_proposals], timers
+                    )
+                    cls_boxes_i = cls_boxes_list[1]
+                    cls_segms_i = cls_segms_list[1]
+                    cls_keyps_i = cls_keyps_list[1]
+                    boxes_prev = boxes_list[1]
+                    im_scale_prev = im_scale_list[1]
+                    fpn_res_sum_prev = fpn_res_sum_list[1]
+                else:
+                    cls_boxes_i, cls_segms_i, cls_keyps,_i cls_track_i, _, boxes, _, fpn_res_sum = im_detect_all_seq(model, im, fpn_res_sum_prev, boxes_prev, im_scale_prev, box_proposals, timer)
+                    boxes_prev = boxes
+                    im_scale_prev = im_scale
+                    fpn_res_sum_prev = fpn_res_sum
+                cls_boxes_prev = cls_boxes_i
+                cls_segms_prev = cls_segms_i
+                cls_keyps_prev = cls_keyps_i
+            else:
+                cls_boxes_i, cls_segms_i, cls_keyps_i = im_detect_all(
+                    model, im, box_proposals, timers
+                )
 
         extend_results(i, all_boxes, cls_boxes_i)
         if cls_segms_i is not None:
             extend_results(i, all_segms, cls_segms_i)
         if cls_keyps_i is not None:
             extend_results(i, all_keyps, cls_keyps_i)
+        if cls_track_i is not None:
+            extend_results(i, all_track, cls_track_i)
 
         if i % 10 == 0:  # Reduce log file size
             ave_total_time = np.sum([t.average_time for t in timers.values()])
@@ -274,12 +309,14 @@ def test_net(
             det_time = (
                 timers['im_detect_bbox'].average_time +
                 timers['im_detect_mask'].average_time +
-                timers['im_detect_keypoints'].average_time
+                timers['im_detect_keypoints'].average_time +
+                timers['im_detect_tracking'].average_time
             )
             misc_time = (
                 timers['misc_bbox'].average_time +
                 timers['misc_mask'].average_time +
-                timers['misc_keypoints'].average_time
+                timers['misc_keypoints'].average_time +
+                timers['misc_tracking'].average_time
             )
             logger.info(
                 (
@@ -293,18 +330,45 @@ def test_net(
 
         if cfg.VIS:
             im_name = os.path.splitext(os.path.basename(entry['image']))[0]
-            vis_utils.vis_one_image(
-                im[:, :, ::-1],
-                '{:d}_{:s}'.format(i, im_name),
-                os.path.join(output_dir, 'vis'),
-                cls_boxes_i,
-                segms=cls_segms_i,
-                keypoints=cls_keyps_i,
-                thresh=cfg.VIS_TH,
-                box_alpha=0.8,
-                dataset=dataset,
-                show_class=True
-            )
+            if MODEL.TRACKING_ON:
+                if i == 1:
+                    _, _, _, _, color_inds_prev = vis_utils.vis_image_pair_opencv(
+                        im_list,
+                        cls_boxes_list,
+                        cls_segms_list,
+                        cls_keyps_list,
+                        cls_track_i,
+                        dataset=dataset,
+                        show_track=True,
+                        show_box=True,
+                    )
+                else:
+                    _, _, _, color_inds_prev = vis_utils.vis_image_pair_opencv(
+                        [None, im],
+                        [cls_boxes_prev, cls_boxes],
+                        [cls_segms_prev, cls_segms],
+                        [cls_keyps_prev, cls_keyps],
+                        cls_track,
+                        dataset=dataset,
+                        show_track=True,
+                        show_box=True,
+                        color_inds_list=[color_inds_prev, None]
+                    )
+            else:
+                vis_utils.vis_one_image(
+                    im[:, :, ::-1],
+                    '{:d}_{:s}'.format(i, im_name),
+                    os.path.join(output_dir, 'vis'),
+                    cls_boxes_i,
+                    segms=cls_segms_i,
+                    keypoints=cls_keyps_i,
+                    thresh=cfg.VIS_TH,
+                    box_alpha=0.8,
+                    dataset=dataset,
+                    show_class=True
+                )
+        im_prev = im
+        box_proposals_prev = box_proposals
 
     cfg_yaml = envu.yaml_dump(cfg)
     if ind_range is not None:
@@ -317,11 +381,12 @@ def test_net(
             all_boxes=all_boxes,
             all_segms=all_segms,
             all_keyps=all_keyps,
+            all_track=all_track,
             cfg=cfg_yaml
         ), det_file
     )
     logger.info('Wrote detections to: {}'.format(os.path.abspath(det_file)))
-    return all_boxes, all_segms, all_keyps
+    return all_boxes, all_segms, all_keyps, all_track
 
 
 def initialize_model_from_cfg(weights_file, gpu_id=0):

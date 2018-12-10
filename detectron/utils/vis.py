@@ -283,8 +283,8 @@ def vis_image_pair_opencv(
         boxes = boxes_list[i]
         classes = classes_list[i]
         assign_inds = assign_inds_list[i]
-        if i > 0:
-            color_inds_list[i - 1] = color_inds_list_new[i - 1]
+        if i == 1:
+            color_inds_list[0] = color_inds_list_new[0]
         for idx in keep_idx[i]:
             bbox = boxes[idx, :4]
             score = boxes[idx, -1]

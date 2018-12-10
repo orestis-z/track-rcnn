@@ -51,7 +51,7 @@ logger = logging.getLogger(__name__)
 
 
 def evaluate_all(
-    dataset, all_boxes, all_segms, all_keyps, output_dir, use_matlab=False
+    dataset, all_boxes, all_segms, all_keyps, all_track, output_dir, use_matlab=False
 ):
     """Evaluate "all" tasks, where "all" includes box detection, instance
     segmentation, and keypoint detection.
@@ -68,6 +68,10 @@ def evaluate_all(
         results = evaluate_keypoints(dataset, all_boxes, all_keyps, output_dir)
         all_results[dataset.name].update(results[dataset.name])
         logger.info('Evaluating keypoints is done!')
+    if cfg.MODEL.TRACKING_ON:
+        results = evaluate_tracking(dataset, all_boxes, all_track, output_dir)
+        all_results[dataset.name].update(results[dataset.name])
+        logger.info('Evaluating tracking is done!')
     return all_results
 
 
@@ -147,6 +151,23 @@ def evaluate_keypoints(dataset, all_boxes, all_keyps, output_dir):
     )
     keypoint_results = _coco_eval_to_keypoint_results(coco_eval)
     return OrderedDict([(dataset.name, keypoint_results)])
+
+def evaluate_tracking(dataset, all_boxes, all_track, output_dir):
+    """Evaluate human keypoint detection (i.e., 2D pose estimation)."""
+    logger.info('Evaluating detections')
+    not_comp = not cfg.TEST.COMPETITION_MODE
+    assert dataset.name.startswith('MOT'), \
+        'Only MOT keypoints are currently supported'
+    mot_eval = json_dataset_evaluator.evaluate_keypoints(
+        dataset,
+        all_boxes,
+        all_track,
+        output_dir,
+        use_salt=not_comp,
+        cleanup=not_comp
+    )
+    tracking_results = _mot_eval_to_tracking_results(mot_eval)
+    return OrderedDict([(dataset.name, tracking_results)])
 
 
 def evaluate_box_proposals(dataset, roidb):
