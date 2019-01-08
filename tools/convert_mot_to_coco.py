@@ -103,9 +103,10 @@ def mot_to_json(ini_path):
 
 
 if __name__ == '__main__':
-    from detectron.datasets.dataset_catalog import _mot_train_sequence_idx
+    from detectron.datasets.dataset_catalog import _mot_train_sequence_idx, _mot_detectors
 
     args = parse_args()
-    for seq in _mot_train_sequence_idx:
-        mot_to_json("{}/{}/seqinfo.ini".format(args.datadir, seq))
+    for detector in _mot_detectors:
+        for seq in _mot_train_sequence_idx:
+            mot_to_json("{}/MOT17-{}-{}/seqinfo.ini".format(args.datadir, seq, detector))
 

@@ -216,11 +216,12 @@ def vis_image_pair_opencv(
     sorted_inds_list = []
     ret = []
     color_inds_list_new = [None, None]
+    masks_list = []
 
     for i, im in enumerate(im_list):
         boxes = boxes_list[i]
-        segms = None if segms_list is None else segms_list[0]
-        keypoints = None if keypoints_list is None else keypoints_list[0]
+        segms = None if segms_list is None else segms_list[i]
+        keypoints = None if keypoints_list is None else keypoints_list[i]
 
         if isinstance(boxes, list):
             boxes, segms, keypoints, classes = convert_from_cls_format(
@@ -236,9 +237,7 @@ def vis_image_pair_opencv(
             continue
 
         if segms is not None and len(segms) > 0:
-            masks = mask_util.decode(segms)
-            color_list = colormap()
-            mask_color_id = 0
+            masks_list.append(mask_util.decode(segms))
 
         # Display in largest to smallest order to reduce occlusion
         areas = (boxes[:, 2] - boxes[:, 0]) * (boxes[:, 3] - boxes[:, 1])
@@ -256,7 +255,7 @@ def vis_image_pair_opencv(
 
     assert(len(sorted_inds_list[0]) == n_rois)
     assert(len(sorted_inds_list[1]) == m_rois)
-    assert(len(track) == n_rois * m_rois)
+    assert(track.shape == (n_rois, m_rois))
 
     if color_inds_list is None:
         color_inds_list = [None, None]
@@ -274,6 +273,7 @@ def vis_image_pair_opencv(
         for j in keep_idx[1]:
             track_prob_mat[i, j] = track[m_rois * i + j]
     track_prob_mat = np.where(track_prob_mat > track_thresh, track_prob_mat, np.zeros((n_rois, m_rois)))
+    track_prob_mat = np.where(np.array([[class_one == class_two for class_two in classes_list[1]] for class_one in classes_list[0]]), track_prob_mat, np.zeros((n_rois, m_rois)))
     assign_inds_list = linear_sum_assignment(-track_prob_mat)
 
     if colors is None:
@@ -350,15 +350,15 @@ def vis_image_pair_opencv(
 
                 # show mask
                 if segms is not None and len(segms) > idx:
-                    color_mask = color_list[mask_color_id % len(color_list), 0:3]
-                    mask_color_id += 1
-                    im = vis_mask(im, masks[..., idx], color_mask)
+                    color_mask = np.array(colors[i_color])
+                    im = vis_mask(im, masks_list[i][..., idx], color_mask)
 
                 # show keypoints
                 if keypoints is not None and len(keypoints) > idx:
-                    im = vis_keypoints(im, keypoints[idx], 2)
+                    im = vis_keypoints(im, keypoints_list[i][idx], 2)
 
         if im is not None:
+            im = vis_class(im, (10, 20), str(i))
             ret.append(im)
     
     ret.append(track_prob_mat)
@@ -497,8 +497,7 @@ def vis_one_image_opencv(
                 im, (bbox[0], bbox[1], bbox[2] - bbox[0], bbox[3] - bbox[1]))
 
         # show class (off by default)
-        if show_class:
-            class_str = get_class_string(classes[i], score, dataset)
+        if show_class or show_track:
             im = vis_class(im, (bbox[0], bbox[1] - 2), class_str)
 
         # show mask
@@ -511,6 +510,124 @@ def vis_one_image_opencv(
         if keypoints is not None and len(keypoints) > i:
             im = vis_keypoints(im, keypoints[i], 2)
 
+    return im
+
+def vis_detections_one_image_opencv(
+        im, detections, detections_prev=[], thresh=0.9, kp_thresh=2, track_thresh=0.8,
+        show_box=False, dataset=None, show_class=False, show_track=False, colors=None):
+    """Constructs a numpy array with the detections visualized."""
+
+    classes =  [det.cls for det in detections]
+    segms =  [det.segm for det in detections]
+    boxes = np.array([det.box for det in detections])
+    keypoints = [det.kps for det in detections]
+    if all(v is None for v in segms):
+        segms = None
+    if all(v is None for v in keypoints):
+        keypoints = None
+
+    if boxes is None or boxes.shape[0] == 0 or max(boxes[:, 4]) < thresh:
+        return im
+
+    color_by_obj_id = True
+    obj_ids = np.unique([det.obj_id for det in detections_prev] + [det.obj_id for det in detections]).tolist()
+    if colors is None:
+        if detections is None:
+            colors = distinct_colors(len(boxes))
+        else:
+            color_by_obj_id = False
+            colors = distinct_colors(len(obj_ids))
+    if segms is not None and len(segms) > 0:
+        masks = mask_util.decode(segms)
+
+    # Display in largest to smallest order to reduce occlusion
+    areas = (boxes[:, 2] - boxes[:, 0]) * (boxes[:, 3] - boxes[:, 1])
+    sorted_inds = np.argsort(-areas)
+
+    for i in sorted_inds:
+        bbox = boxes[i, :4]
+        score = boxes[i, -1]
+        if score < thresh:
+            continue
+
+        if detections is None:
+            i_color = i
+        else:
+            detection = detections[i]
+            if color_by_obj_id:
+                i_color = detection.obj_id
+            else:
+                i_color = obj_ids.index(detection.obj_id)
+
+        # show box (off by default)
+        if show_box:
+            if detections is None:
+                im = vis_bbox(
+                    im, (bbox[0], bbox[1], bbox[2] - bbox[0], bbox[3] - bbox[1]))
+            else:
+                detection = detections[i]
+                if detection.conf_prev < track_thresh:
+                    color = (127.5, 127.5, 127.5)
+                    thick = 1
+                else:
+                    color = colors[i_color]
+                    thick = 2
+                im = vis_bbox(
+                    im, (bbox[0], bbox[1], bbox[2] - bbox[0], bbox[3] - bbox[1]), color=color, thick=thick)
+
+        # show class (off by default)
+        det_str = ""
+        if show_class:
+            det_str += dataset.classes[classes[i]] if dataset is not None else \
+            'id {:d}'.format(classes[i])
+            det_str += ' {:0.2f}'.format(score).lstrip('0')
+            if show_track:
+                det_str += " | "
+        if show_track:
+            det_str += "[{}]".format(detection.obj_id)
+            det_str += ' {:0.2f}'.format(detection.conf_prev).lstrip('0')
+        if show_class or show_track:
+                im = vis_class(im, (bbox[0], bbox[1] - 2), det_str)
+        
+
+        # show mask
+        if segms is not None and len(segms) > i:
+            color_mask = np.array(colors[i_color])
+            im = vis_mask(im, masks[..., i], color_mask)
+
+        # show keypoints
+        if keypoints is not None and len(keypoints) > i:
+            im = vis_keypoints(im, np.array(keypoints[i]), 2)
+
+    return im
+
+def vis_tracking_one_image_opencv(
+    im, detections, thresh=0.9, dataset=None, show_class=False, colors=None):
+
+    for i, detection in enumerate(detections):
+        if len(detection) == 10:
+            _, obj_id, bb_left, bb_top, bb_width, bb_height, conf, _, _, _ = detection
+        else:
+            _, obj_id, bb_left, bb_top, bb_width, bb_height, conf, cls, _ = detection
+        bbox = [bb_left, bb_top, bb_width, bb_height]
+        if conf != -1 and conf < thresh:
+            continue
+
+        color = colors[obj_id]
+
+        im = vis_bbox(
+            im, (bbox[0], bbox[1], bbox[2], bbox[3]), color=color)
+
+        det_str = ""
+        # show class (off by default)
+        if show_class:
+            det_str += dataset.classes[cls] if dataset is not None else \
+            'id {:d}'.format(cls)
+            det_str += " | "
+        det_str += "[{}]".format(obj_id)
+        det_str += ' {:0.2f}'.format(conf).lstrip('0')
+        im = vis_class(im, (bbox[0], bbox[1] - 2), det_str)
+        
     return im
 
 def vis_one_image_opencv_gt(

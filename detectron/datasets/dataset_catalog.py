@@ -202,7 +202,7 @@ _DATASETS = {
         _DEVKIT_DIR:
             _DATA_DIR + '/VOC2012/VOCdevkit2012'
     },
-    'mot_2017_overtrain': {
+    'mot17_overtrain': {
         _IM_DIR:
             _DATA_DIR + '/MOT17/train/overtrain/img1',
         _ANN_FN:
@@ -212,22 +212,24 @@ _DATASETS = {
 
 _mot_train_sequence_idx = ["02", "04", "05", "09", "10", "11", "13"]
 _mot_test_sequence_idx  = ["01", "03", "06", "07", "08", "12", "14"]
+_mot_detectors = ["DPM", "FRCNN", "SDP"]
 
-for idx in _mot_train_sequence_idx:
-    _DATASETS["mot_2017_train_" + idx] = {
-        _IM_DIR:
-            _DATA_DIR + '/MOT17/train/' + idx + "/img1",
-        _ANN_FN:
-            _DATA_DIR + '/MOT17/train/' + idx + "/gt/gt.json",
-    }
+for detector in _mot_detectors:
+    for idx in _mot_train_sequence_idx:
+        _DATASETS["mot17_train_{}_idx".format(detector.lower(), idx)] = {
+            _IM_DIR:
+                '{}/MOT17/train/MOT17-{}-{}/img1'.format(_DATA_DIR, idx, detector),
+            _ANN_FN:
+                '{}/MOT17/train/MOT17-{}-{}/gt/gt.json'.format(_DATA_DIR, idx, detector),
+        }
 
-for idx in _mot_test_sequence_idx:
-    _DATASETS["mot_2017_test_" + idx] = {
-        _IM_DIR:
-            _DATA_DIR + '/MOT17/test/' + idx + "/img1",
-        _ANN_FN:
-            _DATA_DIR + '/MOT17/test/' + idx + "/gt/gt.json",
-    }
+    for idx in _mot_test_sequence_idx:
+        _DATASETS["mot17_test_{}_idx".format(detector.lower(), idx)] = {
+            _IM_DIR:
+                '{}/MOT17/train/MOT17-{}-{}/img1'.format(_DATA_DIR, idx, detector),
+            _ANN_FN:
+                '{}/MOT17/train/MOT17-{}-{}/gt/gt.json'.format(_DATA_DIR, idx, detector),
+        }
 
 def datasets():
     """Retrieve the list of available dataset names."""

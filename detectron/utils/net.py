@@ -101,6 +101,11 @@ def initialize_gpu_from_weights_file(model, weights_file, gpu_id=0, preffix=''):
                 )
             )
             if dst_name in ws_blobs:
+                if cfg.SKIP_EXISTING_WEIGHTS:
+                    msg = ('Workspace blob {} already in workspace, skipping.').format(
+                            src_name)
+                    logger.warning(msg)
+                    continue
                 # If the blob is already in the workspace, make sure that it
                 # matches the shape of the loaded blob
                 ws_blob = workspace.FetchBlob(dst_name)
@@ -111,11 +116,7 @@ def initialize_gpu_from_weights_file(model, weights_file, gpu_id=0, preffix=''):
                             src_name,
                             ws_blob.shape,
                             src_blobs[src_name].shape)
-                    if cfg.SKIP_NON_MATCHING_WEIGHTS:
-                        logger.warning(msg)
-                        continue
-                    else:
-                        assert ws_blob.shape == src_blobs[src_name].shape, \
+                    assert ws_blob.shape == src_blobs[src_name].shape, \
                         msg
             workspace.FeedBlob(
                 dst_name,

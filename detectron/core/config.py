@@ -1040,7 +1040,7 @@ __C.DOWNLOAD_CACHE = '/tmp/detectron-download-cache'
 __C.VIS_NET = False
 
 __C.CONTINUE_ON_ERROR = False
-__C.SKIP_NON_MATCHING_WEIGHTS = False
+__C.SKIP_EXISTING_WEIGHTS = False
 
 # ---------------------------------------------------------------------------- #
 # Cluster options

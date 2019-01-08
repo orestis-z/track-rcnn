@@ -1,4 +1,4 @@
-SKIP_NON_MATCHING_WEIGHTS: True
+SKIP_EXISTING_WEIGHTS: True
 CONTINUE_ON_ERROR: True
 MODEL:
   TYPE: generalized_rcnn
@@ -32,7 +32,8 @@ TRCNN:
   FRAME_DIST_MAX: 36
 TRAIN:
   WEIGHTS: outputs/train/mot_2017_overtrain/generalized_rcnn/model_final.pkl
-  DATASETS: ('mot_2017_train_02', 'mot_2017_train_04', 'mot_2017_train_05', 'mot_2017_train_09', 'mot_2017_train_10', 'mot_2017_train_11', 'mot_2017_train_13')
+  # DATASETS: ('mot_2017_train_02', 'mot_2017_train_04', 'mot_2017_train_05', 'mot_2017_train_09', 'mot_2017_train_10', 'mot_2017_train_11', 'mot_2017_train_13')
+  DATASETS: ('mot_2017_train_02', 'mot_2017_train_04', 'mot_2017_train_05', 'mot_2017_train_09', 'mot_2017_train_10', 'mot_2017_train_11')
   SCALES: (800,)
   BATCH_SIZE_PER_IM: 512
   USE_FLIPPED: False

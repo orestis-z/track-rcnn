@@ -268,13 +268,18 @@ def test_net(
                     im_prev = im
                     box_proposals_prev = box_proposals
                     cls_boxes_i, cls_segms_i, cls_keyps_i = im_detect_all(
-                        model, im, box_proposals, timers
-                    )
-                    cls_track_i = None
+                        model,
+                        im,
+                        box_proposals,
+                        timers)
+                    track_mat_i = None
                 elif i == 1:
-                    cls_boxes_list, cls_segms_list, cls_keyps_list, cls_track_i, boxes_raw_list, boxes_list, im_scale_list, fpn_res_sum_list = multi_im_detect_all(
-                        model, [im_prev, im], [box_proposals_prev, box_proposals], timers
-                    )
+                    cls_boxes_list, cls_segms_list, cls_keyps_list, track_mat_i, extras = multi_im_detect_all(
+                        model,
+                        [im_prev, im],
+                        [box_proposals_prev, box_proposals],
+                        timers)
+                    boxes_list, im_scale_list, fpn_res_sum_list = extras
                     cls_boxes_i = cls_boxes_list[1]
                     cls_segms_i = cls_segms_list[1]
                     cls_keyps_i = cls_keyps_list[1]
@@ -282,25 +287,27 @@ def test_net(
                     im_scale_prev = im_scale_list[1]
                     fpn_res_sum_prev = fpn_res_sum_list[1]
                 else:
-                    cls_boxes_i, cls_segms_i, cls_keyps,_i cls_track_i, _, boxes, _, fpn_res_sum = im_detect_all_seq(model, im, fpn_res_sum_prev, boxes_prev, im_scale_prev, box_proposals, timer)
-                    boxes_prev = boxes
-                    im_scale_prev = im_scale
-                    fpn_res_sum_prev = fpn_res_sum
-                cls_boxes_prev = cls_boxes_i
-                cls_segms_prev = cls_segms_i
-                cls_keyps_prev = cls_keyps_i
+                    cls_boxes_i, cls_segms_i, cls_keyps_i, track_mat_i, extras = im_detect_all_seq(
+                        model,
+                        im,
+                        box_proposals,
+                        (cls_boxes_i, fpn_res_sum_prev, boxes_prev, im_scale_prev),
+                        timers)
+                    boxes_prev, im_scale_prev, fpn_res_sum_prev = extras
             else:
                 cls_boxes_i, cls_segms_i, cls_keyps_i = im_detect_all(
-                    model, im, box_proposals, timers
-                )
+                    model,
+                    im,
+                    box_proposals,
+                    timers)
 
         extend_results(i, all_boxes, cls_boxes_i)
         if cls_segms_i is not None:
             extend_results(i, all_segms, cls_segms_i)
         if cls_keyps_i is not None:
             extend_results(i, all_keyps, cls_keyps_i)
-        if cls_track_i is not None:
-            extend_results(i, all_track, cls_track_i)
+        if track_mat_i is not None:
+            all_track[i] = track_mat_i
 
         if i % 10 == 0:  # Reduce log file size
             ave_total_time = np.sum([t.average_time for t in timers.values()])
@@ -337,7 +344,7 @@ def test_net(
                         cls_boxes_list,
                         cls_segms_list,
                         cls_keyps_list,
-                        cls_track_i,
+                        track_mat_i,
                         dataset=dataset,
                         show_track=True,
                         show_box=True,
@@ -393,33 +400,21 @@ def initialize_model_from_cfg(weights_file, gpu_id=0):
     """Initialize a model from the global cfg. Loads test-time weights and
     creates the networks in the Caffe2 workspace.
     """
-    model = model_builder.create(cfg.MODEL.TYPE, train=False, gpu_id=gpu_id)
-    net_utils.initialize_gpu_from_weights_file(
-        model, weights_file, gpu_id=gpu_id,
-    )
-    model_builder.add_inference_inputs(model)
-    workspace.CreateNet(model.net)
-    workspace.CreateNet(model.conv_body_net)
-    if cfg.MODEL.MASK_ON:
-        workspace.CreateNet(model.mask_net)
-    if cfg.MODEL.KEYPOINTS_ON:
-        workspace.CreateNet(model.keypoint_net)
-    if cfg.MODEL.TRACKING_ON:
-        workspace.CreateNet(model.track_net)
-    return model
+    return initialize_mixed_model_from_cfg([weights_file], [""], gpu_id)
 
 
-def initialize_siamese_model_from_cfg(weights_file_main, weights_file_extra, gpu_id=0, preffix=''):
+def initialize_mixed_model_from_cfg(weights_list, preffix_list, gpu_id=0):
     """Initialize a model from the global cfg. Loads test-time weights and
     creates the networks in the Caffe2 workspace.
     """
     model = model_builder.create(cfg.MODEL.TYPE, train=False, gpu_id=gpu_id)
-    net_utils.initialize_gpu_from_weights_file(
-        model, weights_file_main, gpu_id=gpu_id
-    )
-    net_utils.initialize_gpu_from_weights_file(
-        model, weights_file_extra, gpu_id=gpu_id, preffix=preffix
-    )
+    
+    assert len(weights_list) == len(preffix_list)
+
+    for i, weights_file in enumerate(weights_list):
+        net_utils.initialize_gpu_from_weights_file(
+            model, weights_file, gpu_id=gpu_id, preffix=preffix_list[i]
+        )
     model_builder.add_inference_inputs(model)
     workspace.CreateNet(model.net)
     workspace.CreateNet(model.conv_body_net)
@@ -477,7 +472,7 @@ def empty_results(num_classes, num_images):
     all_boxes = [[[] for _ in range(num_images)] for _ in range(num_classes)]
     all_segms = [[[] for _ in range(num_images)] for _ in range(num_classes)]
     all_keyps = [[[] for _ in range(num_images)] for _ in range(num_classes)]
-    all_track = [[[] for _ in range(num_images)] for _ in range(num_classes)]
+    all_track = [np.array([]) for _ in range(num_images)]
     return all_boxes, all_segms, all_keyps, all_track
 
 

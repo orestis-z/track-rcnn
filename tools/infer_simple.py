@@ -47,6 +47,7 @@ import detectron.utils.c2 as c2_utils
 import detectron.utils.vis as vis_utils
 
 c2_utils.import_detectron_ops()
+c2_utils.import_custom_ops()
 
 # OpenCL may be enabled by default in OpenCV3; disable it because it's not
 # thread safe and causes unwanted GPU memory allocations.
@@ -64,10 +65,19 @@ def parse_args():
     )
     parser.add_argument(
         '--wts',
-        dest='weights',
-        help='weights model file (/path/to/model_weights.pkl)',
-        default=None,
-        type=str
+        dest='weights_list',
+        help='list of weights model files (/path/to/model_weights.pkl)',
+        default=[],
+        type=str,
+        nargs='+'
+    )
+    parser.add_argument(
+        '--preffixes',
+        dest='preffix_list',
+        help='preffixes for the corresponding weights file',
+        default=[],
+        type=str,
+        nargs='+'
     )
     parser.add_argument(
         '--output-dir',
@@ -124,7 +134,8 @@ def main(args):
 
     merge_cfg_from_file(args.cfg)
     cfg.NUM_GPUS = 1
-    args.weights = cache_url(args.weights, cfg.DOWNLOAD_CACHE)
+    for i, weights_file in enumerate(args.weights_list):
+        args.weights_list[i] = cache_url(weights_file, cfg.DOWNLOAD_CACHE)
     assert_and_infer_cfg(cache_urls=False)
 
     assert not cfg.MODEL.RPN_ONLY, \
@@ -132,7 +143,8 @@ def main(args):
     assert not cfg.TEST.PRECOMPUTED_PROPOSALS, \
         'Models that require precomputed proposals are not supported'
 
-    model = infer_engine.initialize_model_from_cfg(args.weights)
+    preffix_list = args.preffix_list if len(args.preffix_list) else [""] * len(args.weights_list)
+    model = infer_engine.initialize_mixed_model_from_cfg(args.weights_list, preffix_list=preffix_list)
     dummy_coco_dataset = dummy_datasets.get_coco_dataset()
 
     if os.path.isdir(args.im_or_folder):

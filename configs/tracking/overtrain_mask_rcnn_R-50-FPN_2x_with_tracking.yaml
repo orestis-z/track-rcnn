@@ -1,5 +1,5 @@
 CONTINUE_ON_ERROR: True
-SKIP_NON_MATCHING_WEIGHTS: True
+SKIP_EXISTING_WEIGHTS: True
 MODEL:
   TYPE: generalized_rcnn
   CONV_BODY: FPN.add_fpn_ResNet50_conv5_body
