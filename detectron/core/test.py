@@ -138,13 +138,8 @@ def multi_im_detect_all(model, im_list, box_proposals_list, timers=None, trackin
             cls_keyps_list.append(None)
 
     if cfg.MODEL.TRACKING_ON and boxes.shape[0] > 0 and tracking:
-        for blob_name, val_1 in fpn_res_sum_list[0].items():
-            workspace.FeedBlob(core.ScopedName(blob_name), np.concatenate((
-                val_1,
-                fpn_res_sum_list[1][blob_name]
-            )))
         timers['im_detect_track'].tic()
-        track = im_detect_track(model, im_scale_list, boxes_list)
+        track = im_detect_track(model, im_scale_list, boxes_list, fpn_res_sum_list)
         timers['im_detect_track'].toc()
 
         timers['misc_track'].tic()
@@ -153,7 +148,7 @@ def multi_im_detect_all(model, im_list, box_proposals_list, timers=None, trackin
     else:
         track_mat =  None
 
-    return cls_boxes_list, cls_segms_list, cls_keyps_list, track_mat, (boxes_list, im_scale_list, fpn_res_sum_list)
+    return cls_boxes_list, cls_segms_list, cls_keyps_list, track_mat, [im_scale_list, boxes_list, fpn_res_sum_list]
 
 def im_detect_all_seq(model, im, box_proposals, prev, timers=None, tracking=True):
     if timers is None:
@@ -225,13 +220,8 @@ def im_detect_all_seq(model, im, box_proposals, prev, timers=None, tracking=True
         cls_keyps = None
 
     if cfg.MODEL.TRACKING_ON and boxes.shape[0] > 0 and tracking:
-        for blob_name, val_prev in fpn_res_sum_prev.items():
-            workspace.FeedBlob(core.ScopedName(blob_name), np.concatenate((
-                val_prev,
-                fpn_res_sum[blob_name]
-            )))
         timers['im_detect_track'].tic()
-        track = im_detect_track(model, [im_scale_prev, im_scale], [boxes_prev, boxes])
+        track = im_detect_track(model, [im_scale_prev, im_scale], [boxes_prev, boxes], [fpn_res_sum_prev, fpn_res_sum])
         timers['im_detect_track'].toc()
 
         timers['misc_track'].tic()
@@ -240,7 +230,7 @@ def im_detect_all_seq(model, im, box_proposals, prev, timers=None, tracking=True
     else:
         track_mat =  None
 
-    return cls_boxes, cls_segms, cls_keyps, track_mat, (boxes, im_scale, fpn_res_sum)
+    return cls_boxes, cls_segms, cls_keyps, track_mat, [im_scale, boxes, fpn_res_sum]
 
 
 def im_conv_body_only(model, im, target_scale, target_max_size):
@@ -881,7 +871,7 @@ def combine_heatmaps_size_dep(hms_ts, ds_ts, us_ts, boxes, heur_f):
     return hms_c
 
 
-def im_detect_track(model, im_scale_list, boxes_list):
+def im_detect_track(model, im_scale_list, boxes_list, fpn_res_sum_list):
     """Infer instance keypoint poses. This function must be called after
     im_detect_bbox as it assumes that the Caffe2 workspace is already populated
     with the necessary blobs.
@@ -898,6 +888,13 @@ def im_detect_track(model, im_scale_list, boxes_list):
             by the network (must be processed by keypoint_results to convert
             into point predictions in the original image coordinate space)
     """
+
+    # Merge fpn_res_sums
+    for blob_name, fpn_res_sum_prev_val in fpn_res_sum_list[0].items():
+        workspace.FeedBlob(core.ScopedName(blob_name), np.concatenate((
+            fpn_res_sum_prev_val,
+            fpn_res_sum_list[1][blob_name]
+        )))
 
     track_rois_list = [_get_rois_blob(boxes, im_scale_list[i]) for i, boxes in enumerate(boxes_list)]
     for i, track_rois in enumerate(track_rois_list):
@@ -1067,7 +1064,7 @@ def track_results(cls_boxes_list, track):
     m_rois, classes_two = _convert_from_cls_format(cls_boxes_list[1])
 
     track_mat = track.reshape((n_rois, m_rois))
-    track_mat = np.where(np.array([[class_one == class_two for class_two in classes_two] for class_one in classes_one]), track_mat, np.zeros((n_rois, m_rois)))
+    track_mat = np.where(np.bitwise_and(np.array([[class_one == class_two for class_two in classes_two] for class_one in classes_one]), track_mat > cfg.TRCNN.DETECTION_THRESH ), track_mat, np.zeros((n_rois, m_rois)))
 
     return track_mat
 

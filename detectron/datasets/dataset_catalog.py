@@ -216,7 +216,7 @@ _mot_detectors = ["DPM", "FRCNN", "SDP"]
 
 for detector in _mot_detectors:
     for idx in _mot_train_sequence_idx:
-        _DATASETS["mot17_train_{}_idx".format(detector.lower(), idx)] = {
+        _DATASETS["mot17_train_{}_{}".format(detector.lower(), idx)] = {
             _IM_DIR:
                 '{}/MOT17/train/MOT17-{}-{}/img1'.format(_DATA_DIR, idx, detector),
             _ANN_FN:
@@ -224,7 +224,7 @@ for detector in _mot_detectors:
         }
 
     for idx in _mot_test_sequence_idx:
-        _DATASETS["mot17_test_{}_idx".format(detector.lower(), idx)] = {
+        _DATASETS["mot17_test_{}_{}".format(detector.lower(), idx)] = {
             _IM_DIR:
                 '{}/MOT17/train/MOT17-{}-{}/img1'.format(_DATA_DIR, idx, detector),
             _ANN_FN:

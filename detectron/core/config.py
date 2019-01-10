@@ -900,6 +900,9 @@ __C.TRCNN.OUTPUT = 'MatchNet'
 __C.TRCNN.FRAME_DIST_MIN = 1
 __C.TRCNN.FRAME_DIST_MAX = 24
 
+__C.TRCNN.MAX_BACK_TRACK = 0
+__C.TRCNN.DETECTION_THRESH = 0.7
+
 
 # ---------------------------------------------------------------------------- #
 # Siamese Backbone options

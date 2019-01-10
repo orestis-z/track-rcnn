@@ -1,17 +1,22 @@
+from collections import deque
+
 from scipy.optimize import linear_sum_assignment
 import numpy as np
 
 
 class Tracking(object):
 
-    def __init__(self, thresh):
+    def __init__(self, thresh, max_back_track):
+        self.extras_deque = deque(maxlen=max_back_track+2)
+        self.lost_detections_deque = deque(maxlen=max_back_track+1)
         self.detection_list = []
+        self.new_detections = []
         self.keep_indices = []
         self.i_frame = 0
         self.obj_id_counter = 0
         self.thresh = thresh;
 
-    def accumulate(self, cls_boxes, cls_segms, cls_keyps, track=None):
+    def accumulate(self, cls_boxes, cls_segms, cls_keyps, extras, track_mat=None):
         # filter out detectios with low bounding box detection threshold
         boxes, segms, keypoints, classes = convert_from_cls_format(
             cls_boxes, cls_segms, cls_keyps)
@@ -25,44 +30,65 @@ class Tracking(object):
         keypoints = [kp for i, kp in enumerate(keypoints) if i in keep_idx] if keypoints else [None] * len(boxes)
         classes = [cls for i, cls in enumerate(classes) if i in keep_idx]
 
-        if track is not None:
-            detections = [Detection(classes[i], box, segms[i], keypoints[i], self.i_frame) for i, box in enumerate(boxes)]
+        if track_mat is not None:
+            detections = [Detection(classes[i], box, segms[i], keypoints[i], self.i_frame, keep_idx[i]) for i, box in enumerate(boxes)]
 
             # filter out track probs with bounding box detections below threshold
             track_temp = np.zeros((len(self.keep_indices[-1]), len(keep_idx)))
             for i, row in enumerate(self.keep_indices[-1]):
                 for j, col in enumerate(keep_idx):
-                    track_temp[i, j] = track[row, col]
-            track = track_temp
+                    track_temp[i, j] = track_mat[row, col]
+            track_mat = track_temp
             
-            # calculate optimal assignments
-            assign_inds_prev, assign_inds = linear_sum_assignment(-track)
+            detections_prev = self.detection_list[-1]
 
             # associate detections
-            detections_prev = self.detection_list[-1]
-            for i, assign_i in enumerate(assign_inds):
-                assign_i_prev = assign_inds_prev[i]
-                detection = detections[assign_i]
-                detection_prev = detections_prev[assign_i_prev]
-                conf = track[assign_i_prev, assign_i]
-                if conf:
-                    detection.associate_prev(detection_prev, conf)
-                    detection_prev.associate_next(detection, conf)
+            self.assign(detections_prev, detections, track_mat)
 
             # check for new detections
+            self.new_detections = []
             for detection in detections:
                 if detection.obj_id is None:
                     detection.obj_id = self.obj_id_counter
                     self.obj_id_counter += 1
+                    self.new_detections.append(detection)
+
+            # check for lost detections
+            lost_detections = [det_prev for det_prev in detections_prev if det_prev.obj_id not in [det.obj_id for det in detections]]
+            self.lost_detections_deque.append(lost_detections)
+            print("New:", [det.obj_id for det in self.new_detections])
+            print("Lost:", [det.obj_id for det in lost_detections])
         else:
-            detections = [Detection(classes[i], box, segms[i], keypoints[i], self.i_frame, i) for i, box in enumerate(boxes)]
+            detections = [Detection(classes[i], box, segms[i], keypoints[i], self.i_frame, i, i) for i, box in enumerate(boxes)]
             for det in detections:
                 det.conf_prev = 1
             self.obj_id_counter = len(detections)
-            
+            self.new_detections = detections
+            print("New:", [det.obj_id for det in self.new_detections])
+        
+        self.extras_deque.append(extras)
         self.detection_list.append(detections)
         self.keep_indices.append(keep_idx)
         self.i_frame += 1
+
+    def assign(self, detections_prev, detections, track_mat):
+        # calculate optimal assignments
+        assign_inds_prev, assign_inds = linear_sum_assignment(-track_mat)
+
+        # associate detections
+        assigned_inds = []
+        assigned_inds_prev = []
+        for i, assign_i in enumerate(assign_inds):
+            assign_i_prev = assign_inds_prev[i]
+            detection = detections[assign_i]
+            detection_prev = detections_prev[assign_i_prev]
+            conf = track_mat[assign_i_prev, assign_i]
+            if conf:
+                assigned_inds_prev.append(assign_i_prev)
+                assigned_inds.append(assign_i)
+                detection.associate_prev(detection_prev, conf)
+                detection_prev.associate_next(detection, conf)
+        return assigned_inds_prev, assigned_inds
 
     def get_associations(self, i_frame, mot=False):
         if i_frame == -1:
@@ -75,7 +101,7 @@ class Tracking(object):
                 bbox = detection.box[:-1].tolist()
                 bbox_width = bbox[2] - bbox[0]
                 bbox_height = bbox[3] - bbox[1]
-                detection_list.append([i_frame + 1, detection.obj_id + 1, bbox[0], bbox[1], bbox_width, bbox_height, detection.conf_prev, -1, -1])
+                detection_list.append([i_frame + 1, detection.obj_id + 1, bbox[0], bbox[1], bbox_width, bbox_height, 1 if detection.conf_prev > 0 else 0, -1, -1])
             else:
                 detection_list.append([i_frame, detection.obj_id, detection.new, detection.box, detection.conf_prev])
         return detection_list
@@ -122,13 +148,15 @@ class Detection(object):
     kps = None
     i_frame = None
     obj_id = None
+    assign_ind = None
 
-    def __init__(self, cls, box, segm, kps, i_frame, obj_id=None):
+    def __init__(self, cls, box, segm, kps, i_frame, assign_ind, obj_id=None):
         self.cls = cls
         self.box = box
         self.segm = segm
         self.kps = kps
         self.i_frame = i_frame
+        self.assign_ind = assign_ind
         self.obj_id = obj_id
 
     def associate_next(self, detection, conf):
@@ -136,7 +164,7 @@ class Detection(object):
         self.conf_next = conf
 
     def associate_prev(self, detection, conf):
-        assert self.obj_id is None
+        # assert self.obj_id is None
         assert detection.obj_id is not None
         self.obj_id = detection.obj_id
         self.detection_prev = detection

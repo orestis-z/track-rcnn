@@ -25,6 +25,7 @@ TRCNN:
   ROI_XFORM_SAMPLING_RATIO: 2
   FRAME_DIST_MIN: 1
   FRAME_DIST_MAX: 36
+  MAX_BACK_TRACK: 2
 MRCNN:
   ROI_MASK_HEAD: mask_rcnn_heads.mask_rcnn_fcn_head_v1up4convs
   RESOLUTION: 28  # (output mask resolution) default 14
@@ -52,7 +53,7 @@ SIAMESE:
 TEST:
   WEIGHTS: outputs/model_merged.pkl
   FORCE_JSON_DATASET_EVAL: True
-  DATASETS: ('mot_2017_train_02',)
+  DATASETS: ('mot17_train_frcnn_02',)
   # SCALE: 1080
   # MAX_SIZE: 1920
   SCALE: 800
