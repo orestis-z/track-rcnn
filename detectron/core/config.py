@@ -674,6 +674,8 @@ __C.FAST_RCNN.ROI_XFORM_SAMPLING_RATIO = 0
 # pretrained FC layers like in VGG16, and will ignore this option
 __C.FAST_RCNN.ROI_XFORM_RESOLUTION = 14
 
+__C.FAST_RCNN.LOSS_ON = True
+
 
 # ---------------------------------------------------------------------------- #
 # RPN options
@@ -694,6 +696,7 @@ __C.RPN.STRIDE = 16
 # RPN anchor aspect ratios
 __C.RPN.ASPECT_RATIOS = (0.5, 1, 2)
 
+__C.RPN.LOSS_ON = True
 
 # ---------------------------------------------------------------------------- #
 # FPN options
@@ -897,8 +900,7 @@ __C.TRCNN.LOSS_WEIGHT = 1.0
 __C.TRCNN.LOSS = 'L2'
 __C.TRCNN.OUTPUT = 'MatchNet'
 
-__C.TRCNN.FRAME_DIST_MIN = 1
-__C.TRCNN.FRAME_DIST_MAX = 24
+__C.TRCNN.FRAME_DIST_MAX = 1.5 # seconds
 
 __C.TRCNN.MAX_BACK_TRACK = 0
 __C.TRCNN.DETECTION_THRESH = 0.7

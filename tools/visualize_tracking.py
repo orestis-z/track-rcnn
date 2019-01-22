@@ -98,7 +98,7 @@ def main(args):
             im,
             detections=detections_list[i],
             dataset=dummy_mot_dataset,
-            show_class=('show_class' in args.opts),
+            show_class=('show-class' in args.opts),
             colors=colors,
         )
         cv2.imwrite("{}/{}_pred.png".format(args.output_dir, im_names[i]), im)

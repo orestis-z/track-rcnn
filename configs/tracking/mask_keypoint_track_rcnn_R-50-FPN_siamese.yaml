@@ -4,14 +4,16 @@ MODEL:
   CONV_BODY: FPN.add_fpn_ResNet50_conv5_body
   # NUM_CLASSES: 14
   NUM_CLASSES: 81
+  # NUM_CLASSES: 2
   FASTER_RCNN: True
-  # MASK_ON: True
-  # KEYPOINTS_ON: True
+  MASK_ON: True
+  KEYPOINTS_ON: True
   TRACKING_ON: True
-  # SIAMESE_BACKBONE_ON: True 
+  SIAMESE_BACKBONE_ON: True 
 NUM_GPUS: 1
 FPN:
   FPN_ON: True
+  # FPN_ON: False
   MULTILEVEL_ROIS: True
   MULTILEVEL_RPN: True
 FAST_RCNN:
@@ -23,8 +25,6 @@ TRCNN:
   ROI_TRACKING_HEAD: track_rcnn_heads.add_track_head
   LOSS: CrossEntropyBalanced
   ROI_XFORM_SAMPLING_RATIO: 2
-  FRAME_DIST_MIN: 1
-  FRAME_DIST_MAX: 36
   MAX_BACK_TRACK: 2
 MRCNN:
   ROI_MASK_HEAD: mask_rcnn_heads.mask_rcnn_fcn_head_v1up4convs

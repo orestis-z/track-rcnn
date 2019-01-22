@@ -267,12 +267,19 @@ def test_net(
                 if i == 0:
                     im_prev = im
                     box_proposals_prev = box_proposals
-                    cls_boxes_i, cls_segms_i, cls_keyps_i = im_detect_all(
+                    cls_boxes_list, cls_segms_list, cls_keyps_list, track_mat_i, extras = multi_im_detect_all(
                         model,
-                        im,
-                        box_proposals,
-                        timers)
-                    track_mat_i = None
+                        [im],
+                        [box_proposals],
+                        timers,
+                        tracking=False)
+                    im_scale_list, boxes_list, fpn_res_sum_list = extras
+                    cls_boxes_i = cls_boxes_list[0]
+                    cls_segms_i = cls_segms_list[0]
+                    cls_keyps_i = cls_keyps_list[0]
+                    im_scale_prev = im_scale_list[0]
+                    boxes_prev = boxes_list[0]
+                    fpn_res_sum_prev = fpn_res_sum_list[0]
                 elif i == 1:
                     cls_boxes_list, cls_segms_list, cls_keyps_list, track_mat_i, extras = multi_im_detect_all(
                         model,

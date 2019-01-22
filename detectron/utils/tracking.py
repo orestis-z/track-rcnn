@@ -1,7 +1,30 @@
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+from __future__ import unicode_literals
+
+import logging
 from collections import deque
+import sys, os
+import cv2
 
 from scipy.optimize import linear_sum_assignment
 import numpy as np
+from caffe2.python import workspace
+from caffe2.python import core
+
+import detectron.utils.c2 as c2_utils
+from detectron.core.config import cfg
+from detectron.core.test import im_detect_track, multi_im_detect_all, im_detect_all_seq
+import detectron.utils.vis as vis_utils
+
+logger = logging.getLogger(__name__)
+# Same line logger
+logger_flush = logging.getLogger(__name__)
+ch = logging.StreamHandler()
+ch.setFormatter(logging.Formatter('\x1b[80D\x1b[1A\x1b[K%(levelname)s %(filename)s:%(lineno)4d: %(message)s'))
+logger_flush.addHandler(ch)
+logger_flush.propagate = 0
 
 
 class Tracking(object):
@@ -56,15 +79,15 @@ class Tracking(object):
             # check for lost detections
             lost_detections = [det_prev for det_prev in detections_prev if det_prev.obj_id not in [det.obj_id for det in detections]]
             self.lost_detections_deque.append(lost_detections)
-            print("New:", [det.obj_id for det in self.new_detections])
-            print("Lost:", [det.obj_id for det in lost_detections])
+            logger.debug("New:", [det.obj_id for det in self.new_detections])
+            logger.debug("Lost:", [det.obj_id for det in lost_detections])
         else:
             detections = [Detection(classes[i], box, segms[i], keypoints[i], self.i_frame, i, i) for i, box in enumerate(boxes)]
             for det in detections:
                 det.conf_prev = 1
             self.obj_id_counter = len(detections)
             self.new_detections = detections
-            print("New:", [det.obj_id for det in self.new_detections])
+            logger.debug("New:", [det.obj_id for det in self.new_detections])
         
         self.extras_deque.append(extras)
         self.detection_list.append(detections)
@@ -170,3 +193,151 @@ class Detection(object):
         self.detection_prev = detection
         self.conf_prev = conf
         self.new = False
+
+
+def infer_track_sequence(model, im_dir, tracking, vis=None, det_file=None):
+    im_names = os.listdir(im_dir)
+    assert len(im_names) > 1, "Sequence must contain > 1 images"
+    im_names.sort()
+    im_paths = [os.path.join(im_dir, im_name) for im_name in im_names]
+    im_names = [im_name.split(".")[0] for im_name in im_names]
+
+    if vis is not None:
+        if not os.path.exists(vis['output-dir']):
+            os.makedirs(vis['output-dir'])
+
+    with open(det_file, "w+") if det_file is not None else None as output_file:
+        for i, im_path in enumerate(im_paths):
+            logger_flush.info("Processing {}".format(im_path))
+            im = cv2.imread(im_path)
+            with c2_utils.NamedCudaScope(0):
+                if i == 0:
+                    cls_boxes_list, cls_segms_list, cls_keyps_list, track_mat, extras = im_detect_all(
+                        model,
+                        im,
+                        None,
+                    )
+                    extras = [l[0] for l in extras]
+                    cls_boxes = cls_boxes_list[0]
+                    cls_segms = cls_segms_list[0]
+                    cls_keyps = cls_keyps_list[0]
+                else:
+                    cls_boxes, cls_segms, cls_keyps, track_mat, extras = im_detect_all_seq(
+                        model,
+                        im,
+                        None,
+                        (cls_boxes_prev, fpn_res_sum_prev, boxes_prev, im_scale_prev)
+                    )
+                im_scale, boxes, fpn_res_sum = extras
+            cls_boxes_prev = cls_boxes
+            cls_segms_prev = cls_segms
+            cls_keyps_prev = cls_keyps
+            im_scale_prev = im_scale
+            boxes_prev = boxes
+            fpn_res_sum_prev = fpn_res_sum
+
+            tracking.accumulate(cls_boxes, cls_segms, cls_keyps, extras, track_mat)
+            back_track(model, tracking)
+
+            if vis is not None:
+                im_pred = vis_utils.vis_detections_one_image_opencv(
+                    im,
+                    detections=tracking.detection_list[-1],
+                    detections_prev=tracking.detection_list[-2] if i > 0 else [],
+                    dataset=vis['dummy-dataset'],
+                    show_class=vis['show-class'],
+                    show_track=vis['show-track'],
+                    show_box=True,
+                    thresh=vis['thresh'],
+                    kp_thresh=vis['kp-thresh'],
+                    track_thresh=vis['track-thresh'],
+                    n_colors=vis['n-colors'],
+                )
+                cv2.imwrite("{}/{}_pred.png".format(vis['output-dir'], im_names[i]), im_pred)
+
+            if output_file is not None:
+                for association in tracking.get_associations(-1, True):
+                    output_file.write(",".join([str(x) for x in association]) + "\n")
+
+
+def back_track(model, tracking):
+    detections = tracking.new_detections
+
+    if not len(detections):
+        return
+
+    # reverse list and begin with second last
+    lost_detections_list = list(tracking.lost_detections_deque)[-2::-1]
+    # reverse list and begin with third last
+    extras_list = list(tracking.extras_deque)[-3::-1]
+
+    # assert len(lost_detections_list) == len(extras_list)
+
+    im_scale, boxes_raw, fpn_res_sum = tracking.extras_deque[-1]
+    # Filter out new detections
+    assign_inds = [det.assign_ind for det in detections]
+    boxes = boxes_raw[assign_inds]
+    classes = [det.cls for det in detections]
+    m_rois = len(assign_inds)
+
+    # Search for matching pairs in previously lost detections
+    for i, detections_prev in enumerate(lost_detections_list):
+        if not len(detections_prev):
+            continue
+
+        # Filter out detections
+        im_scale_prev, boxes_prev, fpn_res_sum_prev = extras_list[i]
+        assign_inds_prev = [det.assign_ind for det in detections_prev]
+        boxes_prev = boxes_prev[assign_inds_prev]
+        classes_prev = [det.cls for det in detections_prev]
+        n_rois = len(assign_inds_prev)
+
+        # import pdb; pdb.set_trace();
+
+        # Merge fpn_res_sums
+        for blob_name, fpn_res_sum_prev_val in fpn_res_sum_prev.items():
+            workspace.FeedBlob(core.ScopedName(blob_name), np.concatenate((
+                fpn_res_sum_prev_val,
+                fpn_res_sum[blob_name]
+            )))
+        # Compute matches
+        with c2_utils.NamedCudaScope(0):
+            track = im_detect_track(model, [im_scale_prev, im_scale], [boxes_prev, boxes], [fpn_res_sum_prev, fpn_res_sum])
+            track_mat = track.reshape((n_rois, m_rois))
+            track_mat = np.where(np.bitwise_and(np.array([[cls_prev == cls for cls in classes] for cls_prev in classes_prev]), track_mat > cfg.TRCNN.DETECTION_THRESH), track_mat, np.zeros((n_rois, m_rois)))
+        assigned_inds_prev, assigned_inds = tracking.assign(detections_prev, detections, track_mat)
+
+        logger.debug("Back tracking level {}:".format(i), [det.obj_id for j, det in enumerate(detections) if j in assigned_inds])
+
+        # Filter out newly assigned detections
+        assign_inds = [j for j, det in enumerate(detections) if j not in assigned_inds]
+        detections = [det for j, det in enumerate(detections) if j in assign_inds]
+        # Assign back
+        tracking.new_detections = detections
+        boxes = boxes_raw[assign_inds]
+        classes = [det.cls for det in detections]
+        m_rois = len(assign_inds)
+
+        # Filter out newly assigned lost detections
+        assign_inds_prev = [j for j, det in enumerate(detections_prev) if j not in assigned_inds_prev]
+        detections_prev = [det for j, det in enumerate(detections_prev) if j in assign_inds_prev]
+        # Assign back starting from second last
+        tracking.lost_detections_deque[-(i + 2)] = detections_prev
+
+        if not len(detections):
+            break
+
+def get_matlab_engine(devkit_path):
+    import matlab.engine
+    eng = matlab.engine.start_matlab()
+    eng.cd(devkit_path)
+    return eng
+
+def eval_detections_matlab(eng, seq_map, res_dir, gt_data_dir, benchmark):
+    m = eng.evaluateTracking(seq_map, res_dir, gt_data_dir, benchmark)['m']
+    return m
+
+
+if __name__ == '__main__':
+    eng = get_matlab_engine("~/repositories/motchallenge-devkit")
+    eval_detections_matlab(eng, 'c10-train.txt', '~/repositories/detectron/outputs/', '~/datasets/MOT17/train/', 'MOT17')

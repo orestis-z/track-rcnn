@@ -36,6 +36,7 @@ TRAIN:
   DEBUG: False
   EPOCH_PERIOD: 5
   ASPECT_GROUPING: False
+  AUTO_RESUME: False
 TRCNN:
   ROI_TRACKING_HEAD: track_rcnn_heads.add_track_head
   LOSS: CrossEntropyBalanced

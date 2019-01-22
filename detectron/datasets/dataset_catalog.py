@@ -214,22 +214,23 @@ _mot_train_sequence_idx = ["02", "04", "05", "09", "10", "11", "13"]
 _mot_test_sequence_idx  = ["01", "03", "06", "07", "08", "12", "14"]
 _mot_detectors = ["DPM", "FRCNN", "SDP"]
 
-for detector in _mot_detectors:
-    for idx in _mot_train_sequence_idx:
-        _DATASETS["mot17_train_{}_{}".format(detector.lower(), idx)] = {
-            _IM_DIR:
-                '{}/MOT17/train/MOT17-{}-{}/img1'.format(_DATA_DIR, idx, detector),
-            _ANN_FN:
-                '{}/MOT17/train/MOT17-{}-{}/gt/gt.json'.format(_DATA_DIR, idx, detector),
-        }
+for t in ['', '_pers']:
+    for detector in _mot_detectors:
+        for idx in _mot_train_sequence_idx:
+            _DATASETS["mot17_train{}_{}_{}".format(t, detector.lower(), idx)] = {
+                _IM_DIR:
+                    '{}/MOT17/train/MOT17-{}-{}/img1'.format(_DATA_DIR, idx, detector),
+                _ANN_FN:
+                    '{}/MOT17/train/MOT17-{}-{}/gt/gt{}.json'.format(_DATA_DIR, idx, detector, t),
+            }
 
-    for idx in _mot_test_sequence_idx:
-        _DATASETS["mot17_test_{}_{}".format(detector.lower(), idx)] = {
-            _IM_DIR:
-                '{}/MOT17/train/MOT17-{}-{}/img1'.format(_DATA_DIR, idx, detector),
-            _ANN_FN:
-                '{}/MOT17/train/MOT17-{}-{}/gt/gt.json'.format(_DATA_DIR, idx, detector),
-        }
+        for idx in _mot_test_sequence_idx:
+            _DATASETS["mot17_test{}_{}_{}".format(t, detector.lower(), idx)] = {
+                _IM_DIR:
+                    '{}/MOT17/test/MOT17-{}-{}/img1'.format(_DATA_DIR, idx, detector),
+                _ANN_FN:
+                    '{}/MOT17/test/MOT17-{}-{}/gt/gt{}.json'.format(_DATA_DIR, idx, detector, t),
+            }
 
 def datasets():
     """Retrieve the list of available dataset names."""

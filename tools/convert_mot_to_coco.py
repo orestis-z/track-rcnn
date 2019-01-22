@@ -16,6 +16,8 @@ def parse_args():
     return parser.parse_args()
 
 
+PERS = False
+
 def mot_to_json(ini_path):
     ini_dir = "/".join(ini_path.split("/")[:-1])
     gt = {}
@@ -24,7 +26,12 @@ def mot_to_json(ini_path):
     config.read(ini_path)
     seq = config["Sequence"]
 
-    gt["info"] = {"name": seq["name"], "type": "track"}
+    gt["info"] = {
+        "name": seq["name"],
+        "type": "track",
+        "frame_rate": seq["frameRate"],
+        "seq_length": seq["seqLength"],
+    }
     gt["categories"] = [{
         'id': 1,
         'name': 'ped',
@@ -79,27 +86,38 @@ def mot_to_json(ini_path):
         gt["images"].append(img_info)
 
     with open(os.path.join(ini_dir, "gt", "gt.txt"), 'r') as fp:
+        gt_txt = ""
         for i, line in enumerate(fp):
             fields = line.split(",")
             confidence = int(fields[6])
             visibility = float(fields[8])
             if confidence == 0 or visibility < 0.4:
                 continue
-            annotation = {
-                "image_id": int(fields[0]),
-                "id": i,
-                "track_id": int(fields[1]),
-                "category_id": int(fields[7]),
-                "bbox": [int(field) for field in fields[2:6]],
-                "segmentation": [],
-                "iscrowd": int(fields[7]) == 13,
-                "area": int(fields[4]) * int(fields[5]),
-                "visibility": visibility
-            }
-            gt["annotations"].append(annotation)
+            cls = int(fields[7])
 
-    with open(os.path.join(ini_dir, "gt", "gt.json"), 'w') as fp:
+            if not PERS or cls in [1, 2, 7]:
+                annotation = {
+                    "image_id": int(fields[0]),
+                    "id": i,
+                    "track_id": int(fields[1]),
+                    "category_id": 1 if PERS else cls,
+                    "bbox": [int(field) for field in fields[2:6]],
+                    "segmentation": [],
+                    "iscrowd": int(fields[7]) == 13,
+                    "area": int(fields[4]) * int(fields[5]),
+                    "visibility": visibility
+                }
+                gt["annotations"].append(annotation)
+                gt_txt += ",".join(fields[:7] + ["1"] + fields[8:])
+
+    gt_str   = "gt"
+    if PERS:
+        gt_str += "_pers"
+    with open(os.path.join(ini_dir, "gt", gt_str + ".json"), 'w') as fp:
         json.dump(gt, fp)
+    if PERS:
+        with open(os.path.join(ini_dir, "gt", "gt_pers.txt"), 'w') as fp:
+            fp.write(gt_txt)
 
 
 if __name__ == '__main__':
@@ -109,4 +127,3 @@ if __name__ == '__main__':
     for detector in _mot_detectors:
         for seq in _mot_train_sequence_idx:
             mot_to_json("{}/MOT17-{}-{}/seqinfo.ini".format(args.datadir, seq, detector))
-

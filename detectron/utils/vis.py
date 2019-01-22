@@ -24,6 +24,7 @@ import cv2
 import numpy as np
 import os
 import colorsys
+import random
 from scipy.optimize import linear_sum_assignment
 
 import pycocotools.mask as mask_util
@@ -512,10 +513,13 @@ def vis_one_image_opencv(
 
     return im
 
+id_to_i_color = {}
+
 def vis_detections_one_image_opencv(
         im, detections, detections_prev=[], thresh=0.9, kp_thresh=2, track_thresh=0.8,
-        show_box=False, dataset=None, show_class=False, show_track=False, colors=None):
+        show_box=False, dataset=None, show_class=False, show_track=False, n_colors=None):
     """Constructs a numpy array with the detections visualized."""
+    global id_to_i_color
 
     classes =  [det.cls for det in detections]
     segms =  [det.segm for det in detections]
@@ -531,12 +535,15 @@ def vis_detections_one_image_opencv(
 
     color_by_obj_id = True
     obj_ids = np.unique([det.obj_id for det in detections_prev] + [det.obj_id for det in detections]).tolist()
-    if colors is None:
+    if n_colors is None:
         if detections is None:
             colors = distinct_colors(len(boxes))
+            id_to_i_color = {i: i for i in xrange(len(boxes))}
         else:
             color_by_obj_id = False
             colors = distinct_colors(len(obj_ids))
+    else:
+        colors = distinct_colors(n_colors)
     if segms is not None and len(segms) > 0:
         masks = mask_util.decode(segms)
 
@@ -555,7 +562,10 @@ def vis_detections_one_image_opencv(
         else:
             detection = detections[i]
             if color_by_obj_id:
-                i_color = detection.obj_id
+                i_color = id_to_i_color.get(detection.obj_id)
+                if i_color is None:
+                    i_color = random.randint(0, n_colors - 1)
+                    id_to_i_color[detection.obj_id] = i_color
             else:
                 i_color = obj_ids.index(detection.obj_id)
 
@@ -566,7 +576,7 @@ def vis_detections_one_image_opencv(
                     im, (bbox[0], bbox[1], bbox[2] - bbox[0], bbox[3] - bbox[1]))
             else:
                 detection = detections[i]
-                if detection.conf_prev < track_thresh:
+                if detection.conf_prev < track_thresh or detection.cls != 1:
                     color = (127.5, 127.5, 127.5)
                     thick = 1
                 else:
@@ -592,7 +602,7 @@ def vis_detections_one_image_opencv(
 
         # show mask
         if segms is not None and len(segms) > i:
-            color_mask = np.array(colors[i_color])
+            color_mask = np.array(color)
             im = vis_mask(im, masks[..., i], color_mask)
 
         # show keypoints

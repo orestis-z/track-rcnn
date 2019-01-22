@@ -89,20 +89,17 @@ def initialize_gpu_from_weights_file(model, weights_file, gpu_id=0, preffix=''):
             else:
                 src_name = unscoped_param_name
             if src_name not in src_blobs:
-                logger.info('{:s} not found (prefix: {})'.format(src_name, preffix))
+                msg = '{:s} not found)'.format(src_name)
+                if len(preffix):
+                    msg += '(prefix: {})'.format(preffix)
+                logger.info(msg)
                 continue
             dst_name = core.ScopedName(unscoped_param_name)
             has_momentum = src_name + '_momentum' in src_blobs
             has_momentum_str = ' [+ momentum]' if has_momentum else ''
-            logger.info(
-                '{:s}{:} loaded from weights file into {:s}: {}'.format(
-                    src_name, has_momentum_str, dst_name, src_blobs[src_name]
-                    .shape
-                )
-            )
             if dst_name in ws_blobs:
                 if cfg.SKIP_EXISTING_WEIGHTS:
-                    msg = ('Workspace blob {} already in workspace, skipping.').format(
+                    msg = 'Workspace blob {} already in workspace, skipping.'.format(
                             src_name)
                     logger.warning(msg)
                     continue
@@ -118,6 +115,12 @@ def initialize_gpu_from_weights_file(model, weights_file, gpu_id=0, preffix=''):
                             src_blobs[src_name].shape)
                     assert ws_blob.shape == src_blobs[src_name].shape, \
                         msg
+            logger.info(
+                '{:s}{:} loaded from weights file into {:s}: {}'.format(
+                    src_name, has_momentum_str, dst_name, src_blobs[src_name]
+                    .shape
+                )
+            )
             workspace.FeedBlob(
                 dst_name,
                 src_blobs[src_name].astype(np.float32, copy=False))
@@ -140,8 +143,11 @@ def initialize_gpu_from_weights_file(model, weights_file, gpu_id=0, preffix=''):
             with c2_utils.CpuScope():
                 workspace.FeedBlob(
                     '__preserve__/{:s}'.format(src_name), src_blobs[src_name])
-                logger.info(
-                    '{:s} preserved in workspace (unused) (prefix: {})'.format(src_name, preffix))
+                msg = '{:s} preserved in workspace (unused)'.format(src_name)
+                if len(preffix):
+                    msg += '(prefix: {})'.format(preffix)
+                logger.info(msg)
+                    
 
 
 def save_model_to_weights_file(weights_file, model):

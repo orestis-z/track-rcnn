@@ -890,11 +890,12 @@ def im_detect_track(model, im_scale_list, boxes_list, fpn_res_sum_list):
     """
 
     # Merge fpn_res_sums
-    for blob_name, fpn_res_sum_prev_val in fpn_res_sum_list[0].items():
-        workspace.FeedBlob(core.ScopedName(blob_name), np.concatenate((
-            fpn_res_sum_prev_val,
-            fpn_res_sum_list[1][blob_name]
-        )))
+    if len(fpn_res_sum_list[1]):
+        for blob_name, fpn_res_sum_prev_val in fpn_res_sum_list[0].items():
+            workspace.FeedBlob(core.ScopedName(blob_name), np.concatenate((
+                fpn_res_sum_prev_val,
+                fpn_res_sum_list[1][blob_name]
+            )))
 
     track_rois_list = [_get_rois_blob(boxes, im_scale_list[i]) for i, boxes in enumerate(boxes_list)]
     for i, track_rois in enumerate(track_rois_list):
@@ -907,7 +908,8 @@ def im_detect_track(model, im_scale_list, boxes_list, fpn_res_sum_list):
     inputs['track_n_rois'] = np.array([len(boxes) for boxes in boxes_list], dtype=np.int32)
 
     inputs['track_n_rois_one'] = np.array([inputs['track_n_rois'][0]])
-    inputs['track_n_rois_two'] = np.array([inputs['track_n_rois'][1]])
+    if len(inputs['track_n_rois']) > 1:
+        inputs['track_n_rois_two'] = np.array([inputs['track_n_rois'][1]])
 
     for k, v in inputs.items():
         workspace.FeedBlob(core.ScopedName(k), v)

@@ -42,7 +42,7 @@ def add_generic_rpn_outputs(model, blob_in, dim_in, spatial_scale_in):
             # CollectAndDistributeFpnRpnProposals also labels proposals when in
             # training mode
             model.CollectAndDistributeFpnRpnProposals()
-        if model.train:
+        if model.train and cfg.RPN.LOSS_ON:
             loss_gradients = FPN.add_fpn_rpn_losses(model)
     else:
         # Not using FPN, add RPN to a single scale
