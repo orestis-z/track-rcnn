@@ -136,7 +136,7 @@ def main(args):
         "track-thresh": args.track_thresh,
         "n-colors": args.n_colors,
     }
-    infer_track_sequence(model, args.im_dir, tracking, vis, args.output_file)
+    infer_track_sequence(model, args.im_dir, tracking, vis=vis, det_file=args.output_file, mot=("all-dets" not in args.opts))
 
 
 if __name__ == '__main__':

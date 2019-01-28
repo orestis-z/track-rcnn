@@ -110,4 +110,5 @@ def add_track_rcnn_blobs(blobs, sampled_boxes, roidb, im_scale, batch_idx):
 
 def finalize_track_minibatch(blobs):
     blobs['track_n_rois_one'] = np.array([blobs['track_n_rois'][0]], dtype=np.int32)
-    blobs['track_n_rois_two'] = np.array([blobs['track_n_rois'][1]], dtype=np.int32)
+    if cfg.TRAIN.IMS_PER_BATCH == 2:
+        blobs['track_n_rois_two'] = np.array([blobs['track_n_rois'][1]], dtype=np.int32)

@@ -41,21 +41,10 @@ def parse_args():
         type=str
     )
     parser.add_argument(
-        '--delta',
-        dest='delta',
-        default=1,
-        type=int,
-    )
-    parser.add_argument(
         '--smooth-sigma',
         dest='smooth_sigma',
         default=1,
         type=float,
-    )
-    parser.add_argument(
-        'opts',
-        default=[],
-        nargs=argparse.REMAINDER
     )
     if len(sys.argv) == 1:
         parser.print_help()
@@ -72,10 +61,11 @@ def main(args):
         if f.isdigit():
             folder_list.append(f)
     folder_list.sort(key=lambda x: int(x))
-    if "final" in files:
-        folder_list.append("final")
+    # if "final" in files:
+    #     folder_list.append("final")
 
     res = []
+    folder_list_temp = list(folder_list)
     for folder in folder_list:
         res_path = os.path.join(args.model_dir, folder, "eval.txt")
         if os.path.isfile(res_path):
@@ -83,6 +73,8 @@ def main(args):
                 res.append([float(x) for x in f.readline().split(",")])
         else:
             print(res_path + " not found")
+            folder_list_temp.remove(folder)
+    folder_list = folder_list_temp
     res = np.array(res).T
 
     smooth = lambda data, sigma=args.smooth_sigma: gaussian_filter1d(data, sigma)
@@ -93,9 +85,9 @@ def main(args):
 
     fig = plt.figure()
     for i, var in enumerate(KEYS):
-        t = np.array(range(len(res[i]))) * args.delta + args.delta
+        t = [int(f) for f in folder_list]
         ax = fig.add_subplot(5, 4, i + 1)
-        ax.plot(t, res[i], '-o', color=color_1 + (0.5,), lw=lw)
+        ax.plot(t, res[i], color=color_1 + (0.5,), lw=lw)
         ax.plot(t, smooth(res[i]), color=color_1, lw=lw, label=var)
         ax.legend()
         ax.grid()

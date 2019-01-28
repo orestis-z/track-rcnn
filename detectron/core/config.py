@@ -218,6 +218,8 @@ __C.DATA_LOADER.MINIBATCH_QUEUE_SIZE = 64
 # Capacity of the per GPU blobs queue
 __C.DATA_LOADER.BLOBS_QUEUE_CAPACITY = 8
 
+__C.DATA_LOADER.EXTRA_BLOBS = ()
+
 
 # ---------------------------------------------------------------------------- #
 # Inference ('test') options
@@ -1143,7 +1145,7 @@ def assert_and_infer_cfg(cache_urls=True, make_immutable=True):
     if __C.RPN.RPN_ON or __C.RETINANET.RETINANET_ON:
         __C.TEST.PRECOMPUTED_PROPOSALS = False
     if cfg.MODEL.TRACKING_ON:
-        __C.TRAIN.IMS_PER_BATCH = 2	
+        __C.TRAIN.IMS_PER_BATCH = 2
     if cache_urls:
         cache_cfg_urls()
     if make_immutable:

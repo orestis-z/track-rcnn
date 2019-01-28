@@ -80,6 +80,11 @@ def parse_args():
         type=int
     )
     parser.add_argument(
+        '--skip',
+        default=0,
+        type=int
+    )
+    parser.add_argument(
         'opts',
         default=[],
         nargs=argparse.REMAINDER
@@ -133,7 +138,10 @@ def main(args):
     matlab_eng = get_matlab_engine(args.devkit_path)
     eval_datections = lambda res_dir, gt_dir: eval_detections_matlab(matlab_eng, seq_map_path, res_dir, gt_dir, 'MOT17')
 
-    for model, it in model_list:
+    for i, (model, it) in enumerate(model_list):
+        if i % (args.skip + 1) != 0:
+            logger.info("Skipping {}".format(model))
+            continue
         if it >= args.start_at:
             weights_list = args.weights_pre_list + [os.path.join(train_dir, model)] + args.weights_post_list
             preffix_list = args.preffix_list if len(args.preffix_list) else [""] * (len(args.weights_pre_list) + len(args.weights_post_list) + 1)

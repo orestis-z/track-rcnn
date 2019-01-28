@@ -1,0 +1,1 @@
+ipython --pdb tools/test_tracking.py -- --cfg configs/tracking/track_rcnn_R-50-FPN-13.yaml --start-at 60000 && ipython2 --pdb tools/visualize_mot_val.py -- --model-dir outputs/test/mot17_train_frcnn_13/generalized_rcnn/ --smooth-sigma 2 

@@ -58,6 +58,9 @@ def get_minibatch_blob_names(is_training=True):
         blob_names += fast_rcnn_roi_data.get_fast_rcnn_blob_names(
             is_training=is_training
         )
+    blob_names += list(cfg.DATA_LOADER.EXTRA_BLOBS)
+    if 'track_n_rois' in cfg.DATA_LOADER.EXTRA_BLOBS:
+        blob_names += ['track_n_rois_one', 'track_n_rois_two'] 
     return blob_names
 
 
@@ -69,6 +72,17 @@ def get_minibatch(roidb):
     # Get the input image blob, formatted for caffe2
     im_blob, im_scales = _get_image_blob(roidb)
     blobs['data'] = im_blob
+
+    prev_time = curr_time
+    if len(cfg.DATA_LOADER.EXTRA_BLOBS):
+        blobs_extra = _get_extra_blobs(roidb)
+        blobs.update(blobs_extra)
+        if 'track_n_rois' in cfg.DATA_LOADER.EXTRA_BLOBS:
+            blobs.update({
+                'track_n_rois_one': [blobs_extra['track_n_rois'][0]],
+                'track_n_rois_two': [blobs_extra['track_n_rois'][1]],
+            })
+
     if cfg.RPN.RPN_ON:
         # RPN-only or end-to-end Faster/Mask R-CNN
         valid = rpn_roi_data.add_rpn_blobs(blobs, im_scales, roidb)
@@ -114,3 +128,19 @@ def _get_image_blob(roidb):
     blob = blob_utils.im_list_to_blob(processed_ims)
 
     return blob, im_scales
+
+def _get_extra_blobs(roidb):
+    num_images = len(roidb)
+    blobs = {}
+    arrs_list = []
+    for i in xrange(num_images):
+        path = roidb[i]['image'].replace("img1", "blobs")
+        path = "/".join(path.split("/")[:-1]) + "/" + str(int(path.split("/")[-1].split(".")[0])) + ".npz"
+        npz = np.load(path).items();
+        npz.sort(key=lambda tup: int(tup[0][4:]))
+        arrs_list.append([tup[1] for tup in npz])
+    arrs = [[arr[i] for arr in arrs_list] for i in xrange(len(arrs_list[0]))]
+    for i, name in enumerate(cfg.DATA_LOADER.EXTRA_BLOBS):
+        blobs[name] = arrs[i]
+
+    return blobs  

@@ -91,6 +91,45 @@ def generalized_rcnn(model):
         freeze_conv_body=cfg.TRAIN.FREEZE_CONV_BODY
     )
 
+def track_heads(model):
+    def _single_gpu_build_func(model):
+        blob_conv, dim_conv, spatial_scale_conv = get_func(cfg.MODEL.CONV_BODY)(model)
+        conv_net = copy.deepcopy(model.net.Proto())
+
+        head_loss_gradients = {
+            'track': None,
+        }
+
+        if cfg.FPN.FPN_ON:
+            # After adding the RPN head, restrict FPN blobs and scales to
+            # those used in the RoI heads
+            blob_conv, spatial_scale_conv = _narrow_to_fpn_roi_levels(
+                blob_conv, spatial_scale_conv
+            )
+
+        assert cfg.MODEL.TRACKING_ON
+        # Add the track head
+        head_loss_gradients['track'], blob_track = _add_roi_track_head(
+            model, get_func(cfg.TRCNN.ROI_TRACKING_HEAD), blob_conv, dim_conv,
+            spatial_scale_conv
+        )
+
+        model.net, _ = c2_utils.SuffixNet(
+            'net', model.net, len(conv_net.op), blob_track
+        )
+        create_input_blobs_for_net(model.net.Proto())
+
+        if model.train:
+            loss_gradients = {}
+            for lg in head_loss_gradients.values():
+                if lg is not None:
+                    loss_gradients.update(lg)
+            return loss_gradients
+        else:
+            return None
+
+    optim.build_data_parallel_model(model, _single_gpu_build_func)
+    return model
 
 def rfcn(model):
     # TODO(rbg): fold into build_generic_detection_model
@@ -239,7 +278,7 @@ def build_generic_detection_model(
 
         if cfg.MODEL.TRACKING_ON:
             # Add the track head
-            head_loss_gradients['track'] = _add_roi_track_head(
+            head_loss_gradients['track'], _ = _add_roi_track_head(
                 model, add_roi_track_head_func, blob_conv, dim_conv,
                 spatial_scale_conv
             )
@@ -406,7 +445,7 @@ def _add_roi_track_head(
         loss_gradients = None
     else:
         loss_gradients = track_rcnn_heads.add_track_losses(model)
-    return loss_gradients
+    return loss_gradients, blob_track
 
 
 def build_generic_rfcn_model(model, add_conv_body_func, dim_reduce=None):
@@ -491,14 +530,14 @@ def add_training_inputs(model, roidb=None):
     model.net._net.op.extend(new_op)
 
 
+def create_input_blobs_for_net(net_def):
+    for op in net_def.op:
+        for blob_in in op.input:
+            if not workspace.HasBlob(blob_in):
+                workspace.CreateBlob(blob_in)
+
 def add_inference_inputs(model):
     """Create network input blobs used for inference."""
-
-    def create_input_blobs_for_net(net_def):
-        for op in net_def.op:
-            for blob_in in op.input:
-                if not workspace.HasBlob(blob_in):
-                    workspace.CreateBlob(blob_in)
 
     create_input_blobs_for_net(model.net.Proto())
     if cfg.MODEL.MASK_ON:

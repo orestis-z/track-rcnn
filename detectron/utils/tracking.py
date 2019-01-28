@@ -7,6 +7,8 @@ import logging
 from collections import deque
 import sys, os
 import cv2
+import pickle
+
 
 from scipy.optimize import linear_sum_assignment
 import numpy as np
@@ -126,7 +128,7 @@ class Tracking(object):
                 bbox_height = bbox[3] - bbox[1]
                 detection_list.append([i_frame + 1, detection.obj_id + 1, bbox[0], bbox[1], bbox_width, bbox_height, 1 if detection.conf_prev > 0 else 0, -1, -1])
             else:
-                detection_list.append([i_frame, detection.obj_id, detection.new, detection.box, detection.conf_prev])
+                detection_list.append([i_frame, detection.obj_id, detection.new, detection.box, detection.conf_prev, detection.cls, detection.segm, detection.kps])
         return detection_list
 
     def get_all_associations(self, mot=False):
@@ -195,12 +197,14 @@ class Detection(object):
         self.new = False
 
 
-def infer_track_sequence(model, im_dir, tracking, vis=None, det_file=None):
+def infer_track_sequence(model, im_dir, tracking, vis=None, det_file=None, mot=True):
     im_names = os.listdir(im_dir)
     assert len(im_names) > 1, "Sequence must contain > 1 images"
     im_names.sort()
     im_paths = [os.path.join(im_dir, im_name) for im_name in im_names]
-    im_names = [im_name.split(".")[0] for im_name in im_names]
+    im_names = [".".join(im_name.split(".")[:-1]) for im_name in im_names]
+
+    dets_full = []
 
     if vis is not None:
         if not os.path.exists(vis['output-dir']):
@@ -212,10 +216,11 @@ def infer_track_sequence(model, im_dir, tracking, vis=None, det_file=None):
             im = cv2.imread(im_path)
             with c2_utils.NamedCudaScope(0):
                 if i == 0:
-                    cls_boxes_list, cls_segms_list, cls_keyps_list, track_mat, extras = im_detect_all(
+                    cls_boxes_list, cls_segms_list, cls_keyps_list, track_mat, extras = multi_im_detect_all(
                         model,
-                        im,
-                        None,
+                        [im],
+                        [None],
+                        tracking=False,
                     )
                     extras = [l[0] for l in extras]
                     cls_boxes = cls_boxes_list[0]
@@ -256,8 +261,14 @@ def infer_track_sequence(model, im_dir, tracking, vis=None, det_file=None):
                 cv2.imwrite("{}/{}_pred.png".format(vis['output-dir'], im_names[i]), im_pred)
 
             if output_file is not None:
-                for association in tracking.get_associations(-1, True):
-                    output_file.write(",".join([str(x) for x in association]) + "\n")
+                if mot:
+                    for association in tracking.get_associations(-1, True):
+                        output_file.write(",".join([str(x) for x in association]) + "\n")
+                else:
+                    dets_full.append(tracking.get_associations(-1, False))
+
+        if not mot and output_file is not None:
+            pickle.dump(dets_full, output_file)
 
 
 def back_track(model, tracking):
