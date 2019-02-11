@@ -220,13 +220,16 @@ def im_detect_all_seq(model, im, box_proposals, prev, timers=None, tracking=True
         cls_keyps = None
 
     if cfg.MODEL.TRACKING_ON and boxes.shape[0] > 0 and tracking:
-        timers['im_detect_track'].tic()
-        track = im_detect_track(model, [im_scale_prev, im_scale], [boxes_prev, boxes], [fpn_res_sum_prev, fpn_res_sum])
-        timers['im_detect_track'].toc()
+        if len(boxes_prev) and len(boxes):
+            timers['im_detect_track'].tic()
+            track = im_detect_track(model, [im_scale_prev, im_scale], [boxes_prev, boxes], [fpn_res_sum_prev, fpn_res_sum])
+            timers['im_detect_track'].toc()
 
-        timers['misc_track'].tic()
-        track_mat = track_results([cls_boxes_prev, cls_boxes], track)
-        timers['misc_track'].toc()
+            timers['misc_track'].tic()
+            track_mat = track_results([cls_boxes_prev, cls_boxes], track)
+            timers['misc_track'].toc()
+        else:
+            track_mat = np.empty((len(boxes_prev), len(boxes)))
     else:
         track_mat =  None
 

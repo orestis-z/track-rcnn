@@ -47,6 +47,8 @@ class Tracking(object):
             cls_boxes, cls_segms, cls_keyps)
 
         keep_idx = []
+        if boxes is None:
+            boxes = np.array([])
         for j, cls_box in enumerate(boxes):
             if cls_box[-1] >= self.thresh:
                 keep_idx.append(j)
@@ -197,10 +199,11 @@ class Detection(object):
         self.new = False
 
 
-def infer_track_sequence(model, im_dir, tracking, vis=None, det_file=None, mot=True):
+def infer_track_sequence(model, im_dir, tracking, proposals=None, vis=None, det_file=None, mot=True):
     im_names = os.listdir(im_dir)
     assert len(im_names) > 1, "Sequence must contain > 1 images"
     im_names.sort()
+    # im_names.sort(key=lambda el: int(el.split('-')[1]))
     im_paths = [os.path.join(im_dir, im_name) for im_name in im_names]
     im_names = [".".join(im_name.split(".")[:-1]) for im_name in im_names]
 
@@ -215,11 +218,12 @@ def infer_track_sequence(model, im_dir, tracking, vis=None, det_file=None, mot=T
             logger_flush.info("Processing {}".format(im_path))
             im = cv2.imread(im_path)
             with c2_utils.NamedCudaScope(0):
+                proposal_boxes = proposals and proposals['boxes'][i]
                 if i == 0:
                     cls_boxes_list, cls_segms_list, cls_keyps_list, track_mat, extras = multi_im_detect_all(
                         model,
                         [im],
-                        [None],
+                        [proposal_boxes],
                         tracking=False,
                     )
                     extras = [l[0] for l in extras]
@@ -230,7 +234,7 @@ def infer_track_sequence(model, im_dir, tracking, vis=None, det_file=None, mot=T
                     cls_boxes, cls_segms, cls_keyps, track_mat, extras = im_detect_all_seq(
                         model,
                         im,
-                        None,
+                        proposal_boxes,
                         (cls_boxes_prev, fpn_res_sum_prev, boxes_prev, im_scale_prev)
                     )
                 im_scale, boxes, fpn_res_sum = extras
@@ -302,8 +306,6 @@ def back_track(model, tracking):
         boxes_prev = boxes_prev[assign_inds_prev]
         classes_prev = [det.cls for det in detections_prev]
         n_rois = len(assign_inds_prev)
-
-        # import pdb; pdb.set_trace();
 
         # Merge fpn_res_sums
         for blob_name, fpn_res_sum_prev_val in fpn_res_sum_prev.items():

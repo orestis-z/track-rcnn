@@ -8,7 +8,7 @@ MODEL:
   # NUM_CLASSES: 2
   # NUM_CLASSES: 14
   NUM_CLASSES: 81
-  FASTER_RCNN: True
+  # FASTER_RCNN: True
   # RPN_ONLY: True
   TRACKING_ON: True
 NUM_GPUS: 1
@@ -54,6 +54,7 @@ TRAIN:
   SNAPSHOT_ITERS: 1000
 TEST:
   DATASETS: ('mot17_train_frcnn_13',)
+  # PROPOSAL_FILES: ('~/datasets/MOT17/train/MOT17-02-DPM/det/proposals.pickle',)
   SCALE: 800
   MAX_SIZE: 1333
   NMS: 0.5

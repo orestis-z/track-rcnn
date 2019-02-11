@@ -156,7 +156,10 @@ def main(args):
                 head, tail = os.path.split(output_file)
                 if not os.path.exists(head):
                     os.makedirs(head)
-                infer_track_sequence(model, im_dir, tracking, None, output_file)
+                # import pickle
+                # proposals = pickle.load(open('/home/orestis/datasets/MOT17/train/MOT17-13-FRCNN/det/proposals.pkl', 'r'))
+                proposals None
+                infer_track_sequence(model, im_dir, tracking, proposals=proposals, vis=None, det_file=output_file)
 
                 eval_datections(os.path.abspath(head) + "/", os.path.abspath(os.path.join(*im_dir.split("/")[:-2])) + "/")
 

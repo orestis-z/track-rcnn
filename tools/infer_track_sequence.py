@@ -4,6 +4,7 @@ import cv2
 import os, sys
 import pprint
 import numpy as np
+import pickle
 
 from caffe2.python import workspace
 from caffe2.python import core
@@ -97,6 +98,11 @@ def parse_args():
         type=int
     )
     parser.add_argument(
+        '--proposals',
+        default=None,
+        type=str
+    )
+    parser.add_argument(
         'opts',
         default=[],
         nargs=argparse.REMAINDER
@@ -136,7 +142,11 @@ def main(args):
         "track-thresh": args.track_thresh,
         "n-colors": args.n_colors,
     }
-    infer_track_sequence(model, args.im_dir, tracking, vis=vis, det_file=args.output_file, mot=("all-dets" not in args.opts))
+    if args.proposals is not None:
+        proposals = pickle.load(open(args.proposals, 'r'))
+    else:
+        proposals = None
+    infer_track_sequence(model, args.im_dir, tracking, vis=vis, det_file=args.output_file, proposals=proposals, mot=("all-dets" not in args.opts))
 
 
 if __name__ == '__main__':

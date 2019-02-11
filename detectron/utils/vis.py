@@ -513,13 +513,13 @@ def vis_one_image_opencv(
 
     return im
 
-id_to_i_color = {}
+obj_id_to_i_color = {}
 
 def vis_detections_one_image_opencv(
         im, detections, detections_prev=[], thresh=0.9, kp_thresh=2, track_thresh=0.8,
         show_box=False, dataset=None, show_class=False, show_track=False, n_colors=None):
     """Constructs a numpy array with the detections visualized."""
-    global id_to_i_color
+    global obj_id_to_i_color
 
     classes =  [det.cls for det in detections]
     segms =  [det.segm for det in detections]
@@ -538,7 +538,7 @@ def vis_detections_one_image_opencv(
     if n_colors is None:
         if detections is None:
             colors = distinct_colors(len(boxes))
-            id_to_i_color = {i: i for i in xrange(len(boxes))}
+            obj_id_to_i_color = {i: i for i in xrange(len(boxes))}
         else:
             color_by_obj_id = False
             colors = distinct_colors(len(obj_ids))
@@ -562,10 +562,10 @@ def vis_detections_one_image_opencv(
         else:
             detection = detections[i]
             if color_by_obj_id:
-                i_color = id_to_i_color.get(detection.obj_id)
+                i_color = obj_id_to_i_color.get(detection.obj_id)
                 if i_color is None:
                     i_color = random.randint(0, n_colors - 1)
-                    id_to_i_color[detection.obj_id] = i_color
+                    obj_id_to_i_color[detection.obj_id] = i_color
             else:
                 i_color = obj_ids.index(detection.obj_id)
 
