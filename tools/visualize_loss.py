@@ -1,3 +1,6 @@
+"""Visualizes loss logged during training
+"""
+
 from __future__ import division
 
 import sys
