@@ -1,3 +1,11 @@
+"""visualize 3D human pose tracking
+
+Live visualization and / or recording of the 3D human pose.
+Input are RGB-D image sequence and 2D detections.
+Transforms the detections to the world-frame and applies filter to depth.
+Detections are eigher computed on the fly or provided as pre-computed.
+"""
+
 import argparse
 import os
 import sys
@@ -13,6 +21,7 @@ from scipy.signal import medfilt2d
 import detectron.utils.keypoints as keypoint_utils
 import detectron.utils.vis as vis_utils
 
+# Axis permutation
 # I = [0, 1, 2]
 I = [2, 0, 1]
 # I = [1, 2, 0]

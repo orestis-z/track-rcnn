@@ -1,3 +1,8 @@
+"""Filter keypoint trajectories.
+
+Applies median or gaussian filter.
+"""
+
 import argparse
 import os
 import sys
