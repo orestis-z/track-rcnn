@@ -149,7 +149,7 @@ def main(args):
     logger.info('Testing with config:')
     logger.info(pprint.pformat(cfg))
 
-    VALIDATION = "validation" in args.opts
+    EVAL = "eval" in args.opts
 
     train_dir = get_output_dir(cfg.TRAIN.DATASETS, training=True)
     train_dir_split = train_dir.split("/")
@@ -158,7 +158,7 @@ def main(args):
     model_list = []
     files = os.listdir(train_dir)
 
-    if VALIDATION:
+    if EVAL:
         test_dir = "/".join(get_output_dir(cfg.TEST.DATASETS, training=False).split("/")[:-1]) + args.model_suffix
         if HYPER_PARAM is not None:
             test_dir = os.path.join(test_dir, HYPER_PARAM.lower())
@@ -191,7 +191,7 @@ def main(args):
     
 
     for i, (model, param) in enumerate(model_param):
-        if VALIDATION and (i + 1 + args.offset) % (args.skip + 1) != 0:
+        if EVAL and (i + 1 + args.offset) % (args.skip + 1) != 0:
             logger.info("Skipping {}".format(model))
             continue
         else:
@@ -200,7 +200,7 @@ def main(args):
                 setattr(cfg.TRCNN, HYPER_PARAM, param)
                 assert_and_infer_cfg(cache_urls=False)
                 print(cfg.TRCNN)
-        if not VALIDATION or param >= args.start_at:
+        if not EVAL or param >= args.start_at:
             weights_list = args.weights_pre_list + [os.path.join(train_dir, model)] + args.weights_post_list
             preffix_list = args.preffix_list if len(args.preffix_list) else [""] * (len(args.weights_pre_list) + len(args.weights_post_list) + 1)
             workspace.ResetWorkspace()
@@ -212,7 +212,7 @@ def main(args):
                 logger.info("Processing dataset {}".format(dataset))
                 im_dir = get_im_dir(dataset)
                 vis = None
-                if VALIDATION:
+                if EVAL:
                     output_file = os.path.join(test_dir, str(param), im_dir.split("/")[-2] + ".txt")
                 else:
                     output_dir = os.path.join("outputs/MOT17", im_dir.split("/")[-2])
@@ -240,7 +240,7 @@ def main(args):
                 freq = float(len(os.listdir(im_dir))) / delta
                 timing.append(freq)
 
-            if VALIDATION:
+            if EVAL:
                 val_directory = os.path.abspath(head) + "/"
                 eval_datections(val_directory, os.path.abspath(os.path.join(*im_dir.split("/")[:-2])) + "/")
                 with open(val_directory + "eval.txt", "r") as f:

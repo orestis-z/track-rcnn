@@ -1,3 +1,6 @@
+"""Script for association inference for an image pair 
+"""
+
 import logging
 import argparse
 import cv2

@@ -1,3 +1,6 @@
+"""Script to convert the MOT ground truth annotations to a COCO compatible format
+"""
+
 import argparse
 import os
 import sys
@@ -10,6 +13,11 @@ def parse_args():
     parser.add_argument(
         '--datadir', help="data dir",
         default=None, type=str)
+    parser.add_argument(
+        '--min_vis',
+        dest='min_vis',
+        help="data dir",
+        default=0.4, type=float)
     if len(sys.argv) == 1:
         parser.print_help()
         sys.exit(1)
@@ -18,7 +26,7 @@ def parse_args():
 
 PERS = False
 
-def mot_to_json(ini_path):
+def mot_to_json(ini_path, min_vis):
     ini_dir = "/".join(ini_path.split("/")[:-1])
     gt = {}
 
@@ -91,7 +99,7 @@ def mot_to_json(ini_path):
             fields = line.split(",")
             confidence = int(fields[6])
             visibility = float(fields[8])
-            if confidence == 0 or visibility < 0.4:
+            if confidence == 0 or visibility < min_vis:
                 continue
             cls = int(fields[7])
 
@@ -110,7 +118,7 @@ def mot_to_json(ini_path):
                 gt["annotations"].append(annotation)
                 gt_txt += ",".join(fields[:7] + ["1"] + fields[8:])
 
-    gt_str   = "gt"
+    gt_str  = "gt"
     if PERS:
         gt_str += "_pers"
     with open(os.path.join(ini_dir, "gt", gt_str + ".json"), 'w') as fp:
@@ -126,4 +134,4 @@ if __name__ == '__main__':
     args = parse_args()
     for detector in _mot_detectors:
         for seq in _mot_train_sequence_idx:
-            mot_to_json("{}/MOT17-{}-{}/seqinfo.ini".format(args.datadir, seq, detector))
+            mot_to_json("{}/MOT17-{}-{}/seqinfo.ini".format(args.datadir, seq, detector), args.min_vis)

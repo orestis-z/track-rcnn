@@ -1,3 +1,6 @@
+"""Script to visuallize tracking given a detection file
+"""
+
 import logging
 import argparse
 import cv2
