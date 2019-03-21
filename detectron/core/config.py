@@ -905,7 +905,7 @@ __C.TRCNN.OUTPUT = 'MatchNet'
 __C.TRCNN.FRAME_DIST_MAX = 1.5 # seconds
 
 __C.TRCNN.MAX_BACK_TRACK = 0
-__C.TRCNN.DETECTION_THRESH = 0.7
+__C.TRCNN.DETECTION_THRESH = 0.8
 
 
 # ---------------------------------------------------------------------------- #

@@ -1,3 +1,12 @@
+"""Script to visualize the network architecture as a computation graph.
+
+Able to visualize both training and inference architecture. 
+Operations are represented as green nodes and blobs as white nodes. Edges are linking
+input and output blobs to operations.
+Backbone and network heads are grouped with distinct colors.
+Blob dimension examination is also supported.
+"""
+
 import argparse
 import subprocess
 import sys
@@ -122,7 +131,7 @@ def main(args):
         workspace.RunNetOnce(model.param_init_net)
         nu.broadcast_parameters(model)
 
-        dataset = JsonDataset(cfg.TEST.DATASETS[0])
+        dataset = JsonDataset(cfg.TRAIN.DATASETS[0])
         roidb = dataset.get_roidb()
 
         with c2_utils.NamedCudaScope(0):

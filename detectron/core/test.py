@@ -219,7 +219,7 @@ def im_detect_all_seq(model, im, box_proposals, prev, timers=None, tracking=True
     else:
         cls_keyps = None
 
-    if cfg.MODEL.TRACKING_ON and boxes.shape[0] > 0 and tracking:
+    if cfg.MODEL.TRACKING_ON and tracking:
         if len(boxes_prev) and len(boxes):
             timers['im_detect_track'].tic()
             track = im_detect_track(model, [im_scale_prev, im_scale], [boxes_prev, boxes], [fpn_res_sum_prev, fpn_res_sum])

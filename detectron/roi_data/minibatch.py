@@ -73,7 +73,6 @@ def get_minibatch(roidb):
     im_blob, im_scales = _get_image_blob(roidb)
     blobs['data'] = im_blob
 
-    prev_time = curr_time
     if len(cfg.DATA_LOADER.EXTRA_BLOBS):
         blobs_extra = _get_extra_blobs(roidb)
         blobs.update(blobs_extra)

@@ -205,6 +205,8 @@ def main(args):
     kps_3d_arr = None
     if os.path.exists(args.kps_3d):
         kps_3d_arr = np.load(open(args.kps_3d))
+    else:
+        raise "{} does not exist".format(args.kps_3d)
 
     if args.dataset == 'tum':
         fx = 525.0  # focal length x
@@ -245,21 +247,15 @@ def main(args):
 
     titles = ["Front", "Side", "Top"]
     fig = plt.figure(figsize=(80, 60))
-    ax_front = fig.add_subplot(2, 2, 1, projection='3d', proj_type='ortho')
-    ax_front.set_aspect('equal')
-    ax_side = fig.add_subplot(2, 2, 2, projection='3d', proj_type='ortho')
-    ax_side.set_aspect('equal')
-    ax_top = fig.add_subplot(2, 2, 3, projection='3d', proj_type='ortho')
-    ax_top.set_aspect('equal')
-    ax_rgb = fig.add_subplot(2, 2, 4)
+    ax_front = fig.add_subplot(1, 1, 1, projection='3d', proj_type='ortho')
+
     if CAMERA_FRAME or args.dataset == 'princeton':
         ax_front.view_init(elev=180, azim=0)
-        ax_side.view_init(elev=180, azim=90)
-        ax_top.view_init(elev=-90, azim=-90)
+      
     else:
         ax.view_init(elev=0, azim=270)
     for i, (rgb_t, rgb_path) in enumerate(rgb_data):
-        for j, ax in enumerate((ax_front, ax_side, ax_top)):
+        for j, ax in enumerate((ax_front,)):
             ax.cla()
             ax.set_title(titles[j])
             print("RGB timestamp  {}".format(rgb_t))
@@ -376,8 +372,6 @@ def main(args):
         img /= np.max(img)
         rgb_kps_img = rgb_kps_img.astype(np.float32) / 255
         img = np.hstack((img, rgb_kps_img))
-        ax_rgb.imshow(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
-        ax_rgb.axis("off")
 
         plt.pause(0.05)
         fig.savefig(os.path.join(args.datadir, 'plt', '{}.png'.format(i)), bbox_inches='tight', dpi=fig.dpi)

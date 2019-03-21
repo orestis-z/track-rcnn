@@ -1,3 +1,8 @@
+"""Script to infer tracking on an image sequence
+
+Configurable to output visualizations and to store detection to a file.
+"""
+
 import logging
 import argparse
 import cv2
@@ -82,7 +87,7 @@ def parse_args():
         '--track-thresh',
         dest='track_thresh',
         help='Threshold for visualizing matches',
-        default=0.7,
+        default=cfg.TRCNN.DETECTION_THRESH,
         type=float
     )
     parser.add_argument(

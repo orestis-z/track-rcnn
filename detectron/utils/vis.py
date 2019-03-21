@@ -516,8 +516,9 @@ def vis_one_image_opencv(
 obj_id_to_i_color = {}
 
 def vis_detections_one_image_opencv(
-        im, detections, detections_prev=[], thresh=0.9, kp_thresh=2, track_thresh=0.8,
-        show_box=False, dataset=None, show_class=False, show_track=False, n_colors=None):
+        im, detections, detections_prev=[], trace=None, thresh=0.9, kp_thresh=2, track_thresh=0.0,
+        show_box=False, dataset=None, show_class=False, show_track=False, n_colors=None,
+	track_mat=None, debug=False):
     """Constructs a numpy array with the detections visualized."""
     global obj_id_to_i_color
 
@@ -584,6 +585,10 @@ def vis_detections_one_image_opencv(
                     thick = 2
                 im = vis_bbox(
                     im, (bbox[0], bbox[1], bbox[2] - bbox[0], bbox[3] - bbox[1]), color=color, thick=thick)
+                if trace is not None:
+                    for p in trace[detection.obj_id]:
+                        if p is not None:
+                            cv2.circle(im, p, 1, color=color, thickness=2, lineType=cv2.LINE_AA)
 
         # show class (off by default)
         det_str = ""
@@ -609,6 +614,24 @@ def vis_detections_one_image_opencv(
         if keypoints is not None and len(keypoints) > i:
             im = vis_keypoints(im, np.array(keypoints[i]), 2)
 
+    if track_mat is not None and debug:
+        precision = 2
+        detections = sorted(detections, key=lambda det: det.obj_id)
+        detections_prev = sorted(detections_prev, key=lambda det: det.obj_id)
+        obj_ids = [det.obj_id for det in detections]
+        pretty_mat = " " * 4 + (" " * precision).join(["{: 4d}".format(obj_id) for obj_id in obj_ids]) + "\n"
+        pretty_mat += " "+ "-" * (len(pretty_mat) + 1) + "\n"
+        for det in detections_prev:
+            pretty_mat += "{: 4d}".format(det.obj_id) + " | " + "".join(["{0:.2f}  ".format(val) if val != 0 else "0" + " " * 5 for val in track_mat[det.assign_ind, [det.assign_ind for det in detections]]]) + "\n"
+        font = cv2.FONT_HERSHEY_SIMPLEX
+        font_scale = 0.35
+        ((txt_w, txt_h), _) = cv2.getTextSize(pretty_mat, font, font_scale, 1)
+        cv2.rectangle(im, (10, 10), ((len(pretty_mat.split('\n')[0]) + 4) * 10, int((len(pretty_mat.split('\n')) + 1) * txt_h * 1.5)), (1, 1, 1, 0.5), thickness=cv2.FILLED)
+        for i, line in enumerate(pretty_mat.split('\n')):
+            txt_tl = [0, int(txt_h * (i + 2) * 1.5)]
+            for letter in line:
+                txt_tl[0] = txt_tl[0] + 10
+                cv2.putText(im, letter, tuple(txt_tl), font, font_scale, _GRAY, lineType=cv2.LINE_AA)
     return im
 
 def vis_tracking_one_image_opencv(
