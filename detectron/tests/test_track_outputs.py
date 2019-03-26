@@ -46,8 +46,7 @@ class TrackOutputsTest(unittest.TestCase):
             track_similarity = np.expand_dims(track_cos_similarity, axis=0)
             return track_similarity.astype(np.float32)
         else:
-            # raise NotImplementedError,
-            print('Test case for output "{}" not implemented yet'.format(cfg.TRCNN.OUTPUT))
+            raise NotImplementedError('Test case for output "{}" not implemented yet'.format(cfg.TRCNN.OUTPUT))
 
     def test_gpu_random_input_gpu(self):
         X = np.random.rand(5, 4)

@@ -22,7 +22,7 @@ c2_utils.import_custom_ops()
 
 
 class TrackLossesTest(unittest.TestCase):
-   """Unit test class for tracking losses.
+    """Unit test class for tracking losses.
     """
 
     def _add_track_losses(self, X, X_gt):
@@ -49,8 +49,7 @@ class TrackLossesTest(unittest.TestCase):
             loss_track_non_matches = loss_track_non_matches_raw / np.sum(track_int32_non_matches)
             loss_track_raw = 0.5 * (loss_track_matches + loss_track_non_matches)
         else:
-            # raise NotImplementedError,
-            print('Test case for loss "{}" not implemented yet'.format(cfg.TRCNN.LOSS))
+            raise NotImplementedError('Test case for loss "{}" not implemented yet'.format(cfg.TRCNN.LOSS))
 
         return cfg.TRCNN.LOSS_WEIGHT * loss_track_raw
 
