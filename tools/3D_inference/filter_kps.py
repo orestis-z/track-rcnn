@@ -36,6 +36,7 @@ def parse_args():
         '--filter',
         dest="filter_type",
         help='guassian or median filter',
+        default='median',
         type=str
     )
     parser.add_argument(

@@ -20,8 +20,6 @@ import numpy as np
 from detectron.utils.logging import setup_logging
 
 
-x_label = "iter"
-
 font = {'family' : 'normal',
         'size'   : 15}
 matplotlib.rc('font', **font)
@@ -31,7 +29,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description='End-to-end inference')
     parser.add_argument(
         '--file',
-        help='CSV file of the losses from tensorboard',
+        help='one or more CSV files of the losses from tensorboard',
         default=None,
         type=str,
         nargs='+'

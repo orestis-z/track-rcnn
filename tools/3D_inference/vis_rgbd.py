@@ -50,7 +50,7 @@ def parse_args():
         '--kps-3d',
         dest='kps_3d',
         help='Pre-computed 3d keypoints in world-frame',
-        default='',
+        default=None,
         type=str
     )
     parser.add_argument(

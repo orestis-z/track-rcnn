@@ -92,12 +92,15 @@ def parse_args():
     return parser.parse_args()
 
 class RoIDataLoaderSimple(RoIDataLoader):
+    """RoIDataLoader with no permutations"""
     def _shuffle_roidb_inds(self):
         self._perm = np.arange(len(self._roidb))
         self._perm = deque(self._perm)
         self._cur = 0
 
 def create_model(weights_file):
+    """adapted from utils.train.setup_model_for_training
+    """
     model = model_builder.create(cfg.MODEL.TYPE, train=True)
     if cfg.MEMONGER:
         optimize_memory(model)
@@ -159,23 +162,27 @@ def main(args):
     dummy_coco_dataset = dummy_datasets.get_coco_dataset()
 
     # Iterate through all images
-    for i in xrange(5000):
+    # TODO: find a proper way to stop iteration
+    for i in xrange(1000):
         logger.info("Processing {}".format(i +))
         with c2_utils.NamedCudaScope(0):
             try:
                 workspace.RunNet(model.net.Proto().name)
             except:
                 pass
+            # Fetch specified blobs
             blobs = [(blob_name, workspace.FetchBlob(core.ScopedName(blob_name))) \
                 for blob_name in args.blobs]
         invalid_blobs = [blob for blob in blobs if not hasattr(blob[1],
             'shape')]
         assert len(invalid_blobs) == 0, "Blobs not found: {}".format([blob[0] \
             for blob in invalid_blobs])
+        # Save blobs
         save_file = os.path.join(args.output_dir, str(i) + ".npz")
         logger.info("Saving to {}".format(save_file))
         to_save = [blob[1] for blob in blobs]
         np.savez(open(save_file, "w+"), *to_save)
+
 
 if __name__ == '__main__':
     workspace.GlobalInit(['caffe2', '--caffe2_log_level=0'])

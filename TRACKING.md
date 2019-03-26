@@ -14,9 +14,9 @@ with our extension to the original Detectron framework ([github.com/facebookrese
   <p>Example multi-task output.</p>
 </div>
 
-## Training
+## Getting Started
 
-### MOT Dataset
+### Dataset
 
 The MOT17 Benchmark dataset (or a symlink to it) has to be placed
 under `detectron/datasets/data`
@@ -27,6 +27,24 @@ compatible format:
 python tools/convert_mot_to_coco.py --dataset-dir path/to/MOT17/dataset
 ```
 
+If we want to use the proposals provided by the benchmark we need to convert those to a COCO
+compatible format using:
+```
+python tools/convert_mot_detetections_to_proposals.py --dataset-dir path/to/MOT17/dataset
+```
+
+### Matlab Engine
+
+In order to run evaluations in python with the provided MOT devkit we need
+to install the matlab engine for python. Follow the official instructions at [www.mathworks.com/help/matlab/matlab_external/install-the-matlab-engine-for-python.html](https://www.mathworks.com/help/matlab/matlab_external/install-the-matlab-engine-for-python.html).
+
+### c2board
+
+We can use tensorboard to visualize our training progress. For this we need
+to install c2board. Follow the official instructions at [github.com/endernewton/c2board](https://github.com/endernewton/c2board).
+
+## Training
+
 ### Config
 
 Set both `MODEL.FASTER_RCNN` and `MODEL.RPN_ONLY` to `True` if training exclusively for tracking. This
@@ -36,47 +54,52 @@ and `FAST_RCNN.LOSS_ON` to `False`.
 
 ### Run training
 
-Finally, run the training with
+Finally, execute the training with
 ```
 python tools/train_net.py --cfg path/to/cfg.yaml
 ```
 
 ### Inspection
 
-Inspect the training loss using
+Inspect the training progress with tensorboard:
 ```
 tensorboard --logdir outputs
 ```
 
-### Pre-compute blobs
+<div align="center">
+  <img src="demo/tensorboard.png" width="700px" />
+  <p>Example tensorboard visualization.</p>
+</div>
 
-Save selected blobs to storage to possibly speed up training time.
-
-Adapted from `scripts/save_tracking_blobs.sh`:
+We can further download the tensorboard visualizations as a csv file and plot those with `matplotlib`:
 
 ```
-for seq in "02" "04" "05" "09" "10" "11" "13"; do
-    ipython2 --pdb tools/save_blobs.py -- --wts path/to/weights/file --cfg path/to/cfg --blobs [blob-list] --output-dir path/to/output/${seq}/ --dataset mot17_train_frcnn_${seq}
-done;
+python visualize_tensorboard.py --file path/to/file.csv
 ```
 
 ## Validation
 
 ### Full sequence validation using MOT metrics
 
-Run validation on the full sequences to calculate MOT metrics on all
-saved models from a specific configuration:
+Run validation on all the testing sequences specified in `TEST.DATASETS` to
+calculate MOT metrics on all saved models from a specific configuration.
+The following command evaluates the sequences specified in `TEST.DATASETS` by interfacing to the MOT devkit in matlab. When using custom proposals we have to set `MODEL.FASTER_RCNN` to `False` in the configuration file.
 ```
-python tools/test_tracking.py ---cfg path/to/config.yaml proposals eval
+python tools/test_tracking.py --cfg path/to/cfg.yaml proposals eval
 ```
 
 ### MOT metrics visualization
 
-The previous command will write validation results to the model
-directory which can be visualized using:
+The previous command will write validation results to the evaluation
+directory (`outputs/test/...`) which can be visualized using:
 ```
-python --pdb tools/visualize_mot_val.py --model-dir outputs/test/.../generalized_rcnn/
+python --pdb tools/visualize_mot_val.py --eval-dir path/to/evaluation/directory
 ```
+
+<div align="center">
+  <img src="demo/val.png" width="250px" />
+  <p>Example metric visualization: MOTA over training interation.</p>
+</div>
 
 ## Inference
 
@@ -86,14 +109,14 @@ Set `MODEL.FASTER_RCNN` to `False` if using custom proposals. Set `MODEL.RPN_ONL
 
 ### Custom image sequence
 
-Simple image sequence inference:
+Simple image sequence inference (visualized results in `outputs/infer_track_sequence`):
 ```
-python tools/infer_track_sequence.py --wts path/to/weights --cfg path/to/config --im-dir path/to/image/sequence --n-colors 10 show-track
+python tools/infer_track_sequence.py --wts path/to/weights.pkl --cfg path/to/cfg.yaml --im-dir path/to/image/sequence show-track
 ```
 
-Pairwise image inference (isolated image pair object associations):
+Isolated image pair object associations (visualized results in `outputs/infer_track_pairs`):
 ```
-python tools/infer_track_pairs.py --wts path/to/weights --cfg path/to/config --im-dir path/to/image/sequence show-track
+python tools/infer_track_pairs.py --wts path/to/weights.pkl --cfg path/to/cfg.yaml --im-dir path/to/image/sequence show-track
 ```
 
 ### Multi-task
@@ -101,7 +124,7 @@ python tools/infer_track_pairs.py --wts path/to/weights --cfg path/to/config --i
 Merging weights from mulitple files for multi-task inference with a sibling backbone:
 
 ```
-python2 tools/infer_track_sequence.py --wts path/to/weights/tracking path/to/weights/kps --cfg configs/tracking/siamese-cfg.yaml --preffixes "" sia --im-dir path/to/image/sequence --n-colors 10 show-track
+python2 tools/infer_track_sequence.py --wts path/to/weights/tracking.pkl path/to/weights/kps.pkl --cfg path/to/multitask-cfg.yaml --preffixes "" sib --im-dir path/to/image/sequence show-track
 ```
 
 <div align="center">
@@ -113,42 +136,38 @@ python2 tools/infer_track_sequence.py --wts path/to/weights/tracking path/to/wei
 </div>
 
 
-### Evaluate MOT sequence
+### Submission
 
-First, we convert proposals provided by the MOT benchmark to a COCO
-compatible format using:
+As we are using custom proposals we need to set `MODEL.FASTER_RCNN` to `False` in the configuration file. The following command infers submission results for all the sequences specified in `TEST.DATASETS` and stores the detection files under `outputs/MOT17/`: 
 ```
-python tools/convert_mot_detetections_to_proposals.py --dataset-dir path/to/MOT17/dataset
-```
-
-Custom proposals (`MODEL.FASTER_RCNN` must be set to `False` in the config): 
-```
-python tools/test_tracking.py --cfg path/to/config.yaml --model model_iterX.pkl proposals eval
+python tools/test_tracking.py --cfg path/to/cfg.yaml --model model_iterX.pkl proposals
 ```
 
 ### 3D Keypoints
 
 The following example use the _Princeton Tracking Benchmark_
 for 3D human pose inference. ([tracking.cs.princeton.edu/dataset.html](http://tracking.cs.princeton.edu/dataset.html)).
+We define the path to the desired sequence as `PRINCETON_SEQ`.
 
-Run inference on custom image sequence:
+Uncomment line `238` in `detectron/utils/tracking.py` for custom image sequence sorting for the Princeton Tracking Benchmark.
+Run inference on the image sequence:
 ```
-python tools/infer_track_sequence.py --wts path/to/weights/tracking path/to/weights/kps --cfg configs/tracking/cfg-siamese.yaml --preffixes "" sia --im-dir .../Princeton\ Tracking\ Benchmark/EvaluationSet/${folder}/rgb --n-colors 2 --output-dir .../Princeton\ Tracking\ Benchmark/EvaluationSet/${folder}/dets --output-file .../Princeton\ Tracking\ Benchmark/EvaluationSet/${folder}/detections.pkl all-dets show-track
-```
-
-Map keypoints to the depth and transform to world coordinates:
-```
-python tools/3D_inference/vis_rgbd.py --datadir .../Princeton\ Tracking\ Benchmark/EvaluationSet/three_people/ --dataset princeton --mode 1 --shrink-factor 1 --k-size 1 --kps-3d .../Princeton\ Tracking\ Benchmark/EvaluationSet/three_people/kps_3d.npy auto-play record-kps
+python tools/infer_track_sequence.py --wts path/to/weights/tracking.pkl path/to/weights/kps.pkl --cfg path/to/multitask-cfg.yaml --preffixes "" sib --im-dir "${PRINCETON_SEQ}/rgb" --n-colors 2 --output-dir ${PRINCETON_SEQ}/dets --output-file "${PRINCETON_SEQ}/detections.pkl" all-dets show-track
 ```
 
-Filter keypoints:
+Map keypoints to the depth and transform to world coordinates (saves results to `kps_3d.npy`):
 ```
-python2 tools/3D_inference/filter_kps.py --kps-3d .../Princeton\ Tracking\ Benchmark/EvaluationSet/three_people/kps_3d.npy --output-dir .../Princeton\ Tracking\ Benchmark/EvaluationSet/three_people/ --filter median --filter-var 5
+python tools/3D_inference/vis_rgbd.py --datadir "${PRINCETON_SEQ}" --dataset princeton --mode 1 --k-size 1 auto-play record-kps no-plot
+```
+
+Filter keypoints with a median or gaussian filter:
+```
+python2 tools/3D_inference/filter_kps.py --kps-3d "${PRINCETON_SEQ}/kps_3d.npy" --output-dir "${PRINCETON_SEQ}" --filter-var 5
 ```
 
 Visualize using the filtered keypoints:
 ```
-python tools/3D_inference/vis_rgbd.py --datadir .../Princeton\ Tracking\ Benchmark/EvaluationSet/three_people/ --dataset princeton --kps-3d ~/datasets/Princeton\ Tracking\ Benchmark/EvaluationSet/three_people/kps_3d.npy
+python tools/3D_inference/vis_rgbd.py --datadir "${PRINCETON_SEQ}" --dataset princeton --mode 1 --kps-3d "${PRINCETON_SEQ}/kps_3d.npy" auto-play
 ```
 
 <div align="center">
@@ -167,18 +186,24 @@ python tools/visualize_net.py --cfg path/to/cfg.yaml
 
 Include blob shapes:
 ```
-python tools/visualize_net.py --cfg path/to/cfg.yaml shapes
+python tools/visualize_net.py --cfg path/to/cfg.yaml --model path/to/weights.pkl shapes
 ```
 
 <div align="center">
-  <img src="demo/graph.png" width="700px" />
+  <img src="demo/graph.png" width="500px" />
   <p>Excerpt from an example of a network graph visualization
-  of the architecture in inference mode.</p>
+  of the architecture in training mode.</p>
 </div>
 
-### Pre-computation of blobs
+### Pre-compute blobs
 
-Pre-compute constant blobs to potentially speed up training time:
+Save selected blobs to storage to possibly speed up training time.
+Please refer to the following issue fist before considering using this script: [github.com/facebookresearch/Detectron/issues/808](https://github.com/facebookresearch/Detectron/issues/808).
+
+Adapted from `scripts/save_tracking_blobs.sh`:
+
 ```
-python tools/save_blobs.py
+for seq in "02" "04" "05" "09" "10" "11" "13"; do
+    python tools/save_blobs.py --wts path/to/weights.pkl --cfg path/to/cfg.yaml --blobs [blob-list] --output-dir path/to/output/${seq}/ --dataset mot17_train_frcnn_${seq}
+done;
 ```
