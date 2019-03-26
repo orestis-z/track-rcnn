@@ -71,6 +71,7 @@ def SuffixNet(name, net, prefix_len, outputs):
 
 
 def RenameNet(name, net, preffix, outputs=[], excluded_nodes=[]):
+    """Rename network."""
     new_net = core.Net(name)
     for op in net.Proto().op:
         new_op = core.CreateOperator(
@@ -100,6 +101,7 @@ def _add_externals(net, outputs):
 
 
 def MergeNets(name, nets):
+    """Merge networks."""
     net = nets[0].Clone(name)
     for n in nets[1:]:
         net.Proto().op.MergeFrom(n.Proto().op)

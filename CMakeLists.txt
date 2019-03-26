@@ -50,7 +50,7 @@ install(TARGETS caffe2_detectron_custom_ops DESTINATION lib)
 
 # Install custom GPU ops lib, if gpu is present.
 if (CAFFE2_USE_CUDA OR CAFFE2_FOUND_CUDA)
-  # Additional -I prefix is required for CMake versions buildefore commit (< 3.7):
+  # Additional -I prefix is required for CMake versions before commit (< 3.7):
   # https://github.com/Kitware/CMake/commit/7ded655f7ba82ea72a82d0555449f2df5ef38594
   list(APPEND CUDA_INCLUDE_DIRS -I${CAFFE2_INCLUDE_DIRS})
   CUDA_ADD_LIBRARY(

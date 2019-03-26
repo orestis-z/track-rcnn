@@ -90,7 +90,8 @@ def get_fast_rcnn_blob_names(is_training=True):
         # branch. Shape is (#instances, 5) in format (batch_idx, x1, y1, x2,
         # y2).
         blob_names += ['track_rois']
-        blob_names += ['track_ids_int32']
+        blob_names += ['track_ids_int32'] # Ground-truth tracking annotations
+        # Additional tracking metadata
         blob_names += ['track_n_rois']
         blob_names += ['track_n_rois_one']
         if cfg.TRAIN.IMS_PER_BATCH == 2:
@@ -219,7 +220,7 @@ def _sample_rois(roidb, im_scale, batch_idx):
         keypoint_rcnn_roi_data.add_keypoint_rcnn_blobs(
             blob_dict, roidb, fg_rois_per_image, fg_inds, im_scale, batch_idx
         )
-
+    # Optionally add Tracking R-CNN blobs
     if cfg.MODEL.TRACKING_ON:
         track_rcnn_roi_data.add_track_rcnn_blobs(
             # blob_dict, sampled_rois, roidb

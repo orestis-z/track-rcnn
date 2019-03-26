@@ -58,14 +58,16 @@ def parse_args():
     parser.add_argument(
         '--output-dir',
         dest='output_dir',
-        help='directory for visualization pdfs (default: outputs/infer_track_sequence)',
+        help='directory for visualization pdfs '
+             '(default: outputs/infer_track_sequence)',
         default='outputs/infer_track_sequence',
         type=str
     )
     parser.add_argument(
         '--output-file',
         dest='output_file',
-        help='file for detections (default: outputs/infer_track_sequence/detections.txt)',
+        help='file for detections (default: outputs/infer_track_sequence/'
+             'detections.txt)',
         default='outputs/infer_track_sequence/detections.txt',
         type=str
     )
@@ -104,6 +106,7 @@ def parse_args():
     )
     parser.add_argument(
         '--proposals',
+        help='path to proposals'
         default=None,
         type=str
     )
@@ -134,8 +137,11 @@ def main(args):
     logger.info('Testing with config:')
     logger.info(pprint.pformat(cfg))
 
-    preffix_list = args.preffix_list if len(args.preffix_list) else [""] * len(args.weights_list)
-    model = infer_engine.initialize_mixed_model_from_cfg(args.weights_list, preffix_list=preffix_list)
+    preffix_list = args.preffix_list if len(args.preffix_list) \
+        else [""] * len(args.weights_list)
+    model = infer_engine.initialize_mixed_model_from_cfg(args.weights_list,
+        preffix_list=preffix_list)
+    # Initialize tracking accumulator
     tracking = Tracking(args.thresh, cfg.TRCNN.MAX_BACK_TRACK)
     vis = {
         "output-dir": args.output_dir,
@@ -147,11 +153,15 @@ def main(args):
         "track-thresh": args.track_thresh,
         "n-colors": args.n_colors,
     }
+    # Load proposals if specified
     if args.proposals is not None:
         proposals = pickle.load(open(args.proposals, 'r'))
     else:
         proposals = None
-    infer_track_sequence(model, args.im_dir, tracking, vis=vis, det_file=args.output_file, proposals=proposals, mot=("all-dets" not in args.opts))
+    # Run inference
+    infer_track_sequence(model, args.im_dir, tracking, vis=vis,
+        det_file=args.output_file, proposals=proposals,
+        mot=("all-dets" not in args.opts))
 
 
 if __name__ == '__main__':

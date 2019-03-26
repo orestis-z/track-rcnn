@@ -1,5 +1,4 @@
-"""Visualizes loss logged during training
-"""
+"""Visualizes loss logged during training"""
 
 from __future__ import division
 

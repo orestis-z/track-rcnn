@@ -16,34 +16,42 @@ from detectron.utils.c2 import gauss_fill
 import detectron.utils.blob as blob_utils
 
 
-# ---------------------------------------------------------------------------- #
+# ------------------------------------------------------------------ #
 # Tracking outputs and losses
-# ---------------------------------------------------------------------------- #
+# ------------------------------------------------------------------ #
 
 def add_track_outputs(model, blob_in, dim):    
     model.EnsureCPUOutput("track_n_rois", "track_n_rois_cpu")
     
     if model.train:
-        model.Split(["track_ids_int32", "track_n_rois_cpu"], ["track_ids_one_int32", "track_ids_two_int32"], axis=0)
-        model.GenerateTrackingLabels(["track_ids_one_int32", "track_ids_two_int32"], "track_int32")
+        model.Split(["track_ids_int32", "track_n_rois_cpu"],
+            ["track_ids_one_int32", "track_ids_two_int32"], axis=0)
+        model.GenerateTrackingLabels(["track_ids_one_int32",
+            "track_ids_two_int32"], "track_int32")
 
-    model.Split([blob_in, "track_n_rois_cpu"], ["track_fc_one", "track_fc_two"], axis=0)
+    model.Split([blob_in, "track_n_rois_cpu"],
+        ["track_fc_one", "track_fc_two"], axis=0)
     
     repeat_outputs = ["track_fc_one_repeat"]
     if model.train:
         repeat_outputs.append("track_fc_one_repeat_lengths")
     model.Repeat(["track_fc_one", "track_n_rois_two"], repeat_outputs) # (n_pairs, mlp_dim)
 
-    model.Tile(["track_fc_two", "track_n_rois_one"], "track_fc_two_tile", axis=0) # (n_pairs, mlp_dim)
+    model.Tile(["track_fc_two", "track_n_rois_one"],
+    "track_fc_two_tile", axis=0) # (n_pairs, mlp_dim)
 
+    # Cosine tracking head architecture
     if cfg.TRCNN.OUTPUT == 'Cosine':
-        model.CosineSimilarity(["track_fc_one_repeat", "track_fc_two_tile"], "track_cos_similarity") # (n_pairs,)
+        model.CosineSimilarity(["track_fc_one_repeat",
+        "track_fc_two_tile"], "track_cos_similarity") # (n_pairs,)
      
-        blob_out = model.ExpandDims("track_cos_similarity", "track_similarity", dims=[0]) # (1, n_pairs)
-
+        blob_out = model.ExpandDims("track_cos_similarity",
+        "track_similarity", dims=[0]) # (1, n_pairs)
+    # MatchNet tracking head architecture
     elif cfg.TRCNN.OUTPUT == 'MatchNet':
         hidden_dim = cfg.TRCNN.MLP_HIDDEN_DIM
-        model.Concat(["track_fc_one_repeat", "track_fc_two_tile"], "track_pairs")
+        model.Concat(["track_fc_one_repeat", "track_fc_two_tile"],
+            "track_pairs")
         model.FC(
             "track_pairs",
             "track_pairs_fc1",
@@ -80,69 +88,88 @@ def add_track_outputs(model, blob_in, dim):
     return blob_out
 
 
-
 def add_track_losses(model):
     model.ConstantFill([], "ONE_int32", value=1, dtype=caffe2_pb2.TensorProto.INT32, shape=(1,))
     model.ConstantFill([], "ZERO_int32", value=0, dtype=caffe2_pb2.TensorProto.INT32, shape=(1,))
     model.ConstantFill([], "ONE_float32", value=1.0)
 
-    if cfg.TRCNN.LOSS == 'Cosine': # L_cos
-        model.CosineSimilarity(["track_similarity", "track_int32"], "track_cosine_similarity")
+    # L_cos (loss based on cosine similarity)
+    if cfg.TRCNN.LOSS == 'Cosine':
+        model.CosineSimilarity(["track_similarity", "track_int32"],
+            "track_cosine_similarity")
         model.Negative("track_cosine_similarity", "track_cosine_similarity_neg")
-        model.Add(["track_cosine_similarity_neg", "ONE_float32"], "loss_track_raw")
-    elif cfg.TRCNN.LOSS == 'L2': # L2sq / n_pairs
-        model.SquaredL2Distance(["track_similarity", "track_int32"], "track_l2_loss")
+        model.Add(["track_cosine_similarity_neg", "ONE_float32"],
+            "loss_track_raw")
+    # L2sq / n_pairs (loss based on normalized squared L2)
+    elif cfg.TRCNN.LOSS == 'L2':
+        model.SquaredL2Distance(["track_similarity", "track_int32"],
+            "track_l2_loss")
         model.Shape("track_similarity", "track_n_pairs", axes=[1])
         model.Cast("track_n_pairs", "track_n_pairs_float", to=1) # FLOAT=1
-        model.StopGradient("track_n_pairs_float", "track_n_pairs_float")
-        model.Div(["track_l2_loss", "track_n_pairs_float"], "loss_track_raw")
-    elif cfg.TRCNN.LOSS == 'L2Balanced': # 0.5 * (L2sq_match / n_match_pairs + L2sq_nomatch / n_nomatch_pairs)
+        model.StopGradient("track_n_pairs_float",
+            "track_n_pairs_float")
+        model.Div(["track_l2_loss", "track_n_pairs_float"],
+            "loss_track_raw")
+    # 0.5 * (L2sq_match / n_match_pairs + L2sq_nomatch /
+    # n_nomatch_pairs) (Normalized squared L2 loss which additionally)
+    # ensures balanced matching and non-matching pairs)
+    elif cfg.TRCNN.LOSS == 'L2Balanced':
         b = model.Cast("track_int32", "track_float32", to=1)
         model.StopGradient(b, b)
+        # Create non-match ground truth vector
         model.Negative("track_float32", "track_float32_neg")
         b = model.Add(["track_float32_neg", "ONE_float32"], "track_float32_nomatch")
         model.StopGradient(b, b)
+        # Linear error vector between predicted similarities and 
+        # ground-truth
         model.Sub(["track_similarity", "track_float32"], "track_delta")
+        # Squared error vector
         model.Sqr("track_delta", "track_delta_sq")
+        # Squared match error
         model.DotProduct(["track_delta_sq", "track_int32"], "loss_track_match_raw")
+        # Squared non-match error
         model.DotProduct(["track_delta_sq", "track_float32_nomatch"], "loss_track_nomatch_raw")
         b = model.SumElements("track_float32", "track_n_match")
         model.StopGradient(b, b)
         b = model.SumElements("track_float32_nomatch", "track_n_nomatch")
         model.StopGradient(b, b)
+        # Normalize match and non-match errors
         model.Div(["loss_track_match_raw", "track_n_match"], "loss_track_match")
         model.Div(["loss_track_nomatch_raw", "track_n_nomatch"], "loss_track_nomatch")
         model.Add(["loss_track_match", "loss_track_nomatch"], "loss_track_sum")
         model.Scale("loss_track_sum", "loss_track_raw", scale=0.5)
+    # Cross entropy loss
     elif cfg.TRCNN.LOSS == 'CrossEntropy':
         model.SoftmaxWithLoss(['track_score', 'track_int32'], ['track_prob', 'loss_track_raw'])
+    # Balanced cross entropy loss (cross entropy loss which 
+    # additionally ensures balanced matching and non-matching pairs)
     elif cfg.TRCNN.LOSS == 'CrossEntropyBalanced':
         model.Sub(["ONE_int32", "track_int32"], "track_nomatch_int32")
-        model.LengthsTile(["track_score", "track_int32"], "track_score_match")
-        model.LengthsTile(["track_score", "track_nomatch_int32"], "track_score_nomatch")
+        # Extract ground-truth matches
+        model.LengthsTile(["track_score", "track_int32"],
+            "track_score_match")
+        # Extract ground-truth non-matches
+        model.LengthsTile(["track_score", "track_nomatch_int32"],
+            "track_score_nomatch")
+        # Extract number of ground-truth matches
         model.SumElementsInt("track_int32", "track_n_match_")
-        model.SumElementsInt("track_nomatch_int32", "track_n_nomatch_")
+        # Extract number of ground-truth non-matches
+        model.SumElementsInt("track_nomatch_int32",
+            "track_n_nomatch_")
         model.ExpandDims("track_n_match_", "track_n_match", dims=[0])
-        model.ExpandDims("track_n_nomatch_", "track_n_nomatch", dims=[0])
+        model.ExpandDims("track_n_nomatch_", "track_n_nomatch",
+            dims=[0])
+        # Create ground-truth matches vector
         model.Tile(['ONE_int32', "track_n_match"], "ONEs_int32", axis=0)
-        model.Tile(['ZERO_int32', "track_n_nomatch"], "ZEROs_int32", axis=0)
-        _, loss_track_match = model.SoftmaxWithLoss(['track_score_match', 'ONEs_int32'], ['track_prob_match', 'loss_track_match'])
-        _, loss_track_nomatch = model.SoftmaxWithLoss(['track_score_nomatch', 'ZEROs_int32'], ['track_prob_nomatch', 'loss_track_nomatch'])
-        model.Sum(['loss_track_match', 'loss_track_nomatch'], "loss_track_raw")
-    elif cfg.TRCNN.LOSS == 'CrossEntropyWeighted':
-        model.Sub(["ONE_int32", "track_int32"], "track_nomatch_int32")
-        model.SumElementsInt("track_int32", "track_n_match_")
-        model.SumElementsInt("track_nomatch_int32", "track_n_nomatch_")
-        model.ExpandDims("track_n_match_", "track_n_match", dims=[0, 1])
-        model.ExpandDims("track_n_nomatch_", "track_n_nomatch", dims=[0, 1])
-        model.Cast("track_n_match", "track_n_match_float32", to=1)
-        model.Cast("track_n_nomatch", "track_n_nomatch_float32", to=1)
-        model.Sum(["track_n_match_float32", "track_n_nomatch_float32"], "track_n_tot")
-        model.Concat(["track_n_match_float32", "track_n_nomatch_float32"], "track_loss_weights_inv")
-        model.Div(["ONE_float32", "track_loss_weights_inv"], "track_loss_weights_")
-        model.Mul(["track_loss_weights_", "track_n_tot"], "track_loss_weights")
-
-        model.SoftmaxWithLoss(['track_score', 'track_int32', "track_loss_weights"], ['track_prob', 'loss_track_raw'])
+        # Create ground-truth non-matches vector
+        model.Tile(['ZERO_int32', "track_n_nomatch"], "ZEROs_int32",
+            axis=0)
+        _, loss_track_match = model.SoftmaxWithLoss(['track_score_match', 'ONEs_int32'],
+            ['track_prob_match', 'loss_track_match'])
+        _, loss_track_nomatch = model.SoftmaxWithLoss(['track_score_nomatch', 'ZEROs_int32'],
+            ['track_prob_nomatch', 'loss_track_nomatch'])
+        model.Sum(['loss_track_match', 'loss_track_nomatch'],
+            "loss_track_raw")
     else:
         raise ValueError
 
@@ -152,9 +179,9 @@ def add_track_losses(model):
     return loss_gradients
 
 
-# ---------------------------------------------------------------------------- #
+# ------------------------------------------------------------------ #
 # Tracking heads
-# ---------------------------------------------------------------------------- #
+# ------------------------------------------------------------------ #
 
 def add_track_head(model, blob_in, dim_in, spatial_scale):
     """Add a Mask R-CNN track head."""
@@ -169,6 +196,7 @@ def add_track_head(model, blob_in, dim_in, spatial_scale):
         sampling_ratio=cfg.TRCNN.ROI_XFORM_SAMPLING_RATIO,
         spatial_scale=spatial_scale
     )
+    # Bottleneck operation
     if cfg.TRCNN.MLP_HEAD_ON:
         model.FC(
             roi_feat,
@@ -180,6 +208,7 @@ def add_track_head(model, blob_in, dim_in, spatial_scale):
         )
         track_fc = model.Relu("track_fc", "track_fc")
         return track_fc, head_dim
+    # No bottleneck operation -> flattern feature vector
     else:
         model.Flatten(roi_feat, "track_fc")
         track_fc = model.Relu("track_fc", "track_fc")

@@ -20,7 +20,9 @@ import numpy as np
 from detectron.utils.logging import setup_logging
 
 
-# KEYS : ([Metric name], [1: the higher the better, 0: the lower the better, -1: unknown], [unit], [bounds]) 
+# KEYS : ([Metric name], [1: the higher the better, 0: the lower the better, -1: unknown],
+# [unit], [bounds])
+# bounds: None indicates unbounded
 KEYS = (
     ("IDF1", 1, "%", (14, None)),
     ("IDP", 1, "-", (15, None)),
@@ -43,12 +45,11 @@ KEYS = (
     ("MOTAL", -1, "?", (None, None)),
     ("Hz", 1, "$s^{-1}$", (None, None)),
 )
-x_label = "number of frames"
-#x_label = "iter"
-#x_label = "threshold"
 font = {'family' : 'normal',
         'size'   : 15}
 matplotlib.rc('font', **font)
+
+# Hardcoded subplots to exclude + subplot shape
 exclude = (
     "FAR", "GT", "PT", "FM", "MOTAL",
     "IDF1", "IDP", "IDR", "MT", "ML", "FP", "FN", "IDS", "MOTP",
@@ -60,8 +61,9 @@ subplot_shape = (1, 2)
 def parse_args():
     parser = argparse.ArgumentParser(description='End-to-end inference')
     parser.add_argument(
-        '--model-dir',
-        dest='model_dir',
+        '--eval-dir',
+        dest='eval_dir',
+        help="evaluation directory",
         default=None,
         type=str,
         nargs='+'
@@ -69,14 +71,23 @@ def parse_args():
     parser.add_argument(
         '--smooth-sigma',
         dest='smooth_sigma',
+        help='gaussian smoothing strength (sigma)',
         default=1,
         type=float,
     )
     parser.add_argument(
         '--iter-max',
         dest='iter_max',
+        help='maximum x value (iteration)',
         default=None,
         type=int,
+    )
+    parser.add_argument(
+        '--x-label',
+        dest='x_label',
+        help='x label',
+        default="iter",
+        type=str,
     )
     if len(sys.argv) == 1:
         parser.print_help()
@@ -89,29 +100,23 @@ def main(args):
 
     res_list = []
     folder_list_list = [] # :D
-    for l, model_dir in enumerate(args.model_dir):
+    # Iterate through evaluation directory 
+    for l, eval_dir in enumerate(args.eval_dir):
         folder_list = []
-        files = os.listdir(model_dir)
+        files = os.listdir(eval_dir)
         for f in files:
             if re.match("^\d+(\.)?(\d+)?$", f) is not None:
                 folder_list.append(f)
         folder_list.sort(key=lambda x: float(x))
-        # if "final" in files:
-        #     folder_list.append("final")
 
-        res = []
+        res = [] # list to store the evaluation results
         folder_list_temp = list(folder_list)
         for m, folder in enumerate(folder_list):
-            # res_path = os.path.join(model_dir, folder, "eval_MOT17-09-DPM.txt")
-            # res_path = os.path.join(model_dir, folder, "eval_MOT17-10-DPM.txt")
-            res_path = os.path.join(model_dir, folder, "eval.txt")
+            res_path = os.path.join(eval_dir, folder, "eval.txt")
             if os.path.isfile(res_path):
                 with open(res_path) as f:
                     line = f.readline().strip().split(",")
                     line = [float(x) for i, x in enumerate(line)]
-                    #line = [float(x) for i, x in enumerate(line) if i < 17]
-                    #if l == 1 and int(folder) > 199999:
-                    #    line[-3] -= 3.8
                     res.append(line)
             else:
                 print(res_path + " not found")
@@ -121,6 +126,7 @@ def main(args):
         res = np.array(res).astype(np.float).T
         res_list.append(res)
 
+    # Gaussian smoothing lambda
     smooth = lambda data, sigma=args.smooth_sigma: gaussian_filter1d(data, sigma)
 
     colors = (
@@ -131,25 +137,33 @@ def main(args):
         "B=256, F=512",
         "B=64, F=128",
     )
-    lw = 2
+    lw = 2 # line width
 
     exc_c = 0 
     fig = plt.figure()
-    fig.set_size_inches(12, 6)
+    fig.set_size_inches(12, 6) # figure size
     for i, key in enumerate(KEYS):
         if key[0] in exclude:
             exc_c += 1
             continue
         if len(res) <= i:
             continue
+        # Iterate through results
         for j, res in enumerate(res_list):
             folder_list = folder_list_list[j]
             t = [float(f) for f in folder_list]
-            ax = fig.add_subplot(subplot_shape[0], subplot_shape[1], i - exc_c + 1)
-            # ax.plot(t, res[i], color=colors[j] + (0.4,),  lw=lw)
-            better = " $\uparrow$" if key[1] == 1 else " $\downarrow$" if key[1] == 0 else ""
-            # ax.plot(t, smooth(res[i]), color=colors[j], lw=lw, label=labels[j])
-            ax.plot(t, res[i], color=colors[j], lw=lw, label=labels[j])
+            ax = fig.add_subplot(subplot_shape[0], subplot_shape[1],
+                i - exc_c + 1)
+            # No smoothing
+            if smooth_sigma == 0:
+                ax.plot(t, res[i], color=colors[j], lw=lw, label=labels[j])
+            # Gaussian smoothing
+            else:
+                ax.plot(t, res[i], color=colors[j] + (0.4,),  lw=lw)
+                ax.plot(t, smooth(res[i]), color=colors[j], lw=lw,
+                    label=labels[j])
+            better = " $\uparrow$" if key[1] == 1 else " $\downarrow$" \
+                if key[1] == 0 else ""
             ax.set_title("{}{}".format(key[0], better))
             if key[3][0] is not None:
                 ax.set_ylim(bottom=key[3][0])
@@ -159,9 +173,11 @@ def main(args):
                 ax.set_xlim(left=0, right=args.iter_max)
         ax.legend()
         ax.set_ylabel("[{}]".format(key[2]), rotation=0, labelpad=20)
-        ax.set_xlabel(x_label)
-        #ax.ticklabel_format(style='sci', axis='x', scilimits=(0,0))
+        ax.set_xlabel(args.x_label)
+        if opts.scientific:
+            ax.ticklabel_format(style='sci', axis='x', scilimits=(0,0))
         ax.grid()
+    # Plot adjustments
     fig.subplots_adjust(hspace=0.5, wspace=0.3)
     #fig.subplots_adjust(left=0.15)
     plt.show()

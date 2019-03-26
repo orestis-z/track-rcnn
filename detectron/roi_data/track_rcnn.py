@@ -32,65 +32,64 @@ def add_track_rcnn_blobs(blobs, sampled_boxes, roidb, im_scale, batch_idx):
     blobs['track_ids_int32'] = max_track
     blobs['track_n_rois'] = np.array([len(sampled_rois)], dtype=np.int32)
 
-    if cfg.TRAIN.DEBUG:
-        import cv2 
-        from detectron.utils.vis import vis_bbox, vis_class, distinct_colors
-        import matplotlib.pyplot as plt
+    # Uncomment to visualize roi detections
+    # import cv2 
+    # from detectron.utils.vis import vis_bbox, vis_class, distinct_colors
+    # import matplotlib.pyplot as plt
 
-        gt_inds = np.where(roidb['gt_classes'] > 0)[0]
-        rpn_inds = np.where(roidb['gt_classes'] == 0)[0]
+    # gt_inds = np.where(roidb['gt_classes'] > 0)[0]
+    # rpn_inds = np.where(roidb['gt_classes'] == 0)[0]
 
-        boxes = roidb['boxes'] / im_scale
-        boxes_gt = boxes[gt_inds]
-        boxes_rpn = boxes[rpn_inds]
-        max_track_gt = max_track[gt_inds]
-        max_track_rpn = max_track[rpn_inds]
+    # boxes = roidb['boxes'] / im_scale
+    # boxes_gt = boxes[gt_inds]
+    # boxes_rpn = boxes[rpn_inds]
+    # max_track_gt = max_track[gt_inds]
+    # max_track_rpn = max_track[rpn_inds]
 
-        areas = (boxes[:, 2] - boxes[:, 0]) * (boxes[:, 3] - boxes[:, 1])
-        areas_gt = (boxes_gt[:, 2] - boxes_gt[:, 0]) * (boxes_gt[:, 3] - boxes_gt[:, 1])
-        areas_rpn = (boxes_rpn[:, 2] - boxes_rpn[:, 0]) * (boxes_rpn[:, 3] - boxes_rpn[:, 1])
-        sorted_inds = np.argsort(-areas)
-        sorted_inds_gt = np.argsort(-areas_gt)
-        sorted_inds_rpn = np.argsort(-areas_rpn)
+    # areas = (boxes[:, 2] - boxes[:, 0]) * (boxes[:, 3] - boxes[:, 1])
+    # areas_gt = (boxes_gt[:, 2] - boxes_gt[:, 0]) * (boxes_gt[:, 3] - boxes_gt[:, 1])
+    # areas_rpn = (boxes_rpn[:, 2] - boxes_rpn[:, 0]) * (boxes_rpn[:, 3] - boxes_rpn[:, 1])
+    # sorted_inds = np.argsort(-areas)
+    # sorted_inds_gt = np.argsort(-areas_gt)
+    # sorted_inds_rpn = np.argsort(-areas_rpn)
 
-        n_ids = len(max_track_gt)
-        colors = distinct_colors(n_ids)
+    # n_ids = len(max_track_gt)
+    # colors = distinct_colors(n_ids)
 
-        
-        im = cv2.imread(roidb['image'])
-        im_save = im.copy()
-        im_save_gt = im.copy()
-        im_save_rpn = im.copy()
+    # im = cv2.imread(roidb['image'])
+    # im_save = im.copy()
+    # im_save_gt = im.copy()
+    # im_save_rpn = im.copy()
 
-        for i in sorted_inds:
-            bbox = boxes[i, :4]
-            track_id = max_track[i]
+    # for i in sorted_inds:
+    #     bbox = boxes[i, :4]
+    #     track_id = max_track[i]
 
-            im_save = vis_bbox(
-                im_save, (bbox[0], bbox[1], bbox[2] - bbox[0], bbox[3] - bbox[1]), color=colors[max_track.tolist().index(track_id)])
-            im_save = vis_class(im_save, (bbox[0], bbox[1] - 2), str(track_id))
+    #     im_save = vis_bbox(
+    #         im_save, (bbox[0], bbox[1], bbox[2] - bbox[0], bbox[3] - bbox[1]), color=colors[max_track.tolist().index(track_id)])
+    #     im_save = vis_class(im_save, (bbox[0], bbox[1] - 2), str(track_id))
 
-        for i in sorted_inds_gt:
-            bbox = boxes_gt[i, :4]
-            track_id = max_track_gt[i]
+    # for i in sorted_inds_gt:
+    #     bbox = boxes_gt[i, :4]
+    #     track_id = max_track_gt[i]
 
-            im_save_gt = vis_bbox(
-                im_save_gt, (bbox[0], bbox[1], bbox[2] - bbox[0], bbox[3] - bbox[1]), color=colors[max_track_gt.tolist().index(track_id)])
-            im_save_gt = vis_class(im_save_gt, (bbox[0], bbox[1] - 2), str(track_id))
+    #     im_save_gt = vis_bbox(
+    #         im_save_gt, (bbox[0], bbox[1], bbox[2] - bbox[0], bbox[3] - bbox[1]), color=colors[max_track_gt.tolist().index(track_id)])
+    #     im_save_gt = vis_class(im_save_gt, (bbox[0], bbox[1] - 2), str(track_id))
 
-        for i in sorted_inds_rpn:
-            bbox = boxes_rpn[i, :4]
-            track_id = max_track_rpn[i]
+    # for i in sorted_inds_rpn:
+    #     bbox = boxes_rpn[i, :4]
+    #     track_id = max_track_rpn[i]
 
-            im_save_rpn = vis_bbox(
-                im_save_rpn, (bbox[0], bbox[1], bbox[2] - bbox[0], bbox[3] - bbox[1]), color=colors[max_track_gt.tolist().index(track_id)])
-            im_save_rpn = vis_class(im_save_rpn, (bbox[0], bbox[1] - 2), str(track_id))
+    #     im_save_rpn = vis_bbox(
+    #         im_save_rpn, (bbox[0], bbox[1], bbox[2] - bbox[0], bbox[3] - bbox[1]), color=colors[max_track_gt.tolist().index(track_id)])
+    #     im_save_rpn = vis_class(im_save_rpn, (bbox[0], bbox[1] - 2), str(track_id))
 
-        img_id = roidb['id']
+    # img_id = roidb['id']
 
-        cv2.imwrite("train_track_rois_{}.png".format(img_id), im_save)
-        cv2.imwrite("train_track_{}.png".format(img_id), im_save_gt)
-        cv2.imwrite("train_track_rpn_{}.png".format(img_id), im_save_rpn)
+    # cv2.imwrite("train_track_rois_{}.png".format(img_id), im_save)
+    # cv2.imwrite("train_track_{}.png".format(img_id), im_save_gt)
+    # cv2.imwrite("train_track_rpn_{}.png".format(img_id), im_save_rpn)
 
 
 def finalize_track_minibatch(blobs):

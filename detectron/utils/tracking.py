@@ -90,12 +90,14 @@ class Tracking(object):
                     self.new_detections.append(detection)
 
             # check for lost detections
-            lost_detections = [det_prev for det_prev in detections_prev if det_prev.obj_id not in [det.obj_id for det in detections]]
+            lost_detections = [det_prev for det_prev in detections_prev \
+                if det_prev.obj_id not in [det.obj_id for det in detections]]
             self.lost_detections_deque.append(lost_detections)
             logger.debug("New:", [det.obj_id for det in self.new_detections])
             logger.debug("Lost:", [det.obj_id for det in lost_detections])
         else:
-            detections = [Detection(classes[i], box, segms[i], keypoints[i], self.i_frame, keep_idx[i], i) for i, box in enumerate(boxes)]
+            detections = [Detection(classes[i], box, segms[i], keypoints[i], self.i_frame, keep_idx[i], i) \
+                for i, box in enumerate(boxes)]
             self.obj_id_counter = len(detections)
             self.new_detections = detections
             logger.debug("New:", [det.obj_id for det in self.new_detections])
@@ -125,6 +127,7 @@ class Tracking(object):
         return assigned_inds_prev, assigned_inds
 
     def get_associations(self, i_frame, mot=False):
+        """Get associations from frame `iframe`"""
         if i_frame == -1:
             i_frame = len(self.detection_list) - 1
         detection_list = []
@@ -135,18 +138,22 @@ class Tracking(object):
                 bbox = detection.box[:-1].tolist()
                 bbox_width = bbox[2] - bbox[0]
                 bbox_height = bbox[3] - bbox[1]
-                detection_list.append([i_frame + 1, detection.obj_id + 1, bbox[0], bbox[1], bbox_width, bbox_height, 1 if detection.conf_prev > 0 else 0, -1, -1])
+                detection_list.append([i_frame + 1, detection.obj_id + 1, bbox[0], bbox[1], bbox_width,
+                    bbox_height, 1 if detection.conf_prev > 0 else 0, -1, -1])
             else:
-                detection_list.append([i_frame, detection.obj_id, detection.new, detection.box, detection.conf_prev, detection.cls, detection.segm, detection.kps])
+                detection_list.append([i_frame, detection.obj_id, detection.new, detection.box,
+                    detection.conf_prev, detection.cls, detection.segm, detection.kps])
         return detection_list
 
     def get_all_associations(self, mot=False):
+        """Get associations from all frames"""
         detection_list = []
         for i in xrange(len(self.detection_list)):
             detection_list.extend(self.get_associations(i, mot))
         return detection_list
 
     def get_trace(self):
+        """Get tracking traces for visualizations"""
         trace = { det.obj_id: [] for det in self.detection_list[-1]}
         obj_ids = trace.keys()
         for detections in self.detection_list:
@@ -182,6 +189,9 @@ def convert_from_cls_format(cls_boxes, cls_segms, cls_keyps):
     return boxes, segms, keyps, classes
 
 class Detection(object):
+    """Class containing various information for an object detection
+    E.g. instance segments, human poses, object associations etc.
+    """
     detection_prev = None
     detection_next = None
     conf_next = 0
@@ -206,11 +216,12 @@ class Detection(object):
         self.obj_id = obj_id
 
     def associate_next(self, detection, conf):
+        """Associate to the detection from the next frame"""
         self.detection_next = detection
         self.conf_next = conf
 
     def associate_prev(self, detection, conf):
-        # assert self.obj_id is None
+        """Associate to the detection from the previous frame"""
         assert detection.obj_id is not None
         self.obj_id = detection.obj_id
         self.detection_prev = detection
@@ -219,10 +230,12 @@ class Detection(object):
 
 
 def infer_track_sequence(model, im_dir, tracking, proposals=None, vis=None, det_file=None, mot=True):
+    """Image sequence inference method. Includes optional visualizations
+    and tracking detection output file creation"""
     im_names = os.listdir(im_dir)
     assert len(im_names) > 1, "Sequence must contain > 1 images"
     im_names.sort()
-    # im_names.sort(key=lambda el: int(el.split('-')[1]))
+    # im_names.sort(key=lambda el: int(el.split('-')[1])) # alternative sorting
     im_paths = [os.path.join(im_dir, im_name) for im_name in im_names]
     im_names = [".".join(im_name.split(".")[:-1]) for im_name in im_names]
 
@@ -305,6 +318,7 @@ def infer_track_sequence(model, im_dir, tracking, proposals=None, vis=None, det_
 
 
 def back_track(model, tracking):
+    """Back tracking method for object re-identification"""
     detections = tracking.new_detections
 
     if not len(detections):
@@ -344,7 +358,11 @@ def back_track(model, tracking):
         with c2_utils.NamedCudaScope(0):
             track = im_detect_track(model, [im_scale_lost, im_scale], [boxes_lost, boxes], [fpn_res_sum_lost, fpn_res_sum])
             track_mat = track.reshape((n_rois, m_rois))
-            track_mat = np.where(np.bitwise_and(np.array([[cls_lost == cls for cls in classes] for cls_lost in classes_lost]), track_mat >= cfg.TRCNN.DETECTION_THRESH), track_mat, np.zeros((n_rois, m_rois)))
+            track_mat = np.where(
+                np.bitwise_and(
+                    np.array([[cls_lost == cls for cls in classes] for cls_lost in classes_lost]),
+                    track_mat >= cfg.TRCNN.DETECTION_THRESH),
+                track_mat, np.zeros((n_rois, m_rois)))
         assigned_inds_lost, assigned_inds = tracking.assign(lost_detections, detections, track_mat)
 
         logger.debug("Back tracking level {}:".format(i), [det.obj_id for j, det in enumerate(detections) if j in assigned_inds])
@@ -368,12 +386,14 @@ def back_track(model, tracking):
             break
 
 def get_matlab_engine(devkit_path):
+    """Get the matlab engine."""
     import matlab.engine
     eng = matlab.engine.start_matlab()
     eng.cd(devkit_path)
     return eng
 
 def eval_detections_matlab(eng, seq_map, res_dir, gt_data_dir, benchmark):
+    """Evaluate detections with the matlab MOT devkit."""
     try:
         eng.evaluateTracking(seq_map, res_dir, gt_data_dir, benchmark)
     except:

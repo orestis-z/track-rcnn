@@ -227,13 +227,13 @@ class DetectionModelHelper(cnn.CNNModelHelper):
         return outputs
 
     def GenerateTrackingLabels(self, blobs_in, blob_out):
-        """
+        """""Op for generating training labels for object associations
         blobs_in:
-          - 'track_ids_one_int32'
-          - 'track_ids_two_int32'
+          - R1-dimensianal array 'track_ids_one_int32'
+          - R2-dimensianal array 'track_ids_two_int32'
 
         blobs_out:
-          - 'track_labels_int32'
+          - (R1*R2)-dimensianal array 'track_labels_int32'
         """
         name = 'GenerateTrackingLabelsOp:' + ','.join([str(b) for b in blobs_in])
 

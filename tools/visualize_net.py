@@ -42,7 +42,7 @@ def parse_args():
     parser.add_argument(
         '--model',
         dest='model_file',
-        # help='Config file for training (and optionally testing)',
+        help='Model file for blob shape visualization',
         default=None,
         type=str
     )
@@ -56,15 +56,16 @@ def parse_args():
     parser.add_argument(
         '--net',
         dest='net_names',
-        # help='Config file for training (and optionally testing)',
-        default=['net', 'conv_body_net', 'mask_net', 'keypoint_net', 'track_net', 'track_rec_net', 'param_init_net'],
+        help='network names to visualize',
+        default=['net', 'conv_body_net', 'mask_net', 'keypoint_net', 'track_net',
+            'track_rec_net', 'param_init_net'],
         type=str,
         nargs='+'
     )
     parser.add_argument(
         '--input_shape',
         dest='input_shape',
-        # help='Config file for training (and optionally testing)',
+        help='Input image shape for blob shape visualization',
         default=None,
         type=lambda val: eval(val),
     )
@@ -114,7 +115,7 @@ def main(args):
     else:
         get_dot_graph = lambda net, shapes: net_drawer.GetPydotGraph(net, rankdir="BT", shapes=shapes, hide_params=HIDE_PARAMS)
 
-    # get model
+    # Get model
     if args.cfg_file is not None:
         merge_cfg_from_file(args.cfg_file)
     cfg.NUM_GPUS = 1
@@ -126,6 +127,7 @@ def main(args):
     if SHAPES and TRAIN:
         raise NotImplementedError
 
+    # Run model to get shape information of all blobs
     if SHAPES:
         model = infer_engine.initialize_model_from_cfg(MODEL_FILE)
         workspace.RunNetOnce(model.param_init_net)
@@ -150,6 +152,7 @@ def main(args):
 
     subprocess.call(["killall", "xdot"])
 
+    # Visualize all specified nets
     for net_name in NET_NAMES:
         net = getattr(model, net_name, None)
         if net:
@@ -160,6 +163,7 @@ def main(args):
                 name_append = 'train'
             else:
                 name_append = 'infer'
+            # Save graph
             graph_dir =  os.path.join(args.output_dir, cfg.MODEL.TYPE)
             if not os.path.exists(graph_dir):
                 os.makedirs(graph_dir)

@@ -2,18 +2,15 @@ SKIP_EXISTING_WEIGHTS: True
 MODEL:
   TYPE: generalized_rcnn
   CONV_BODY: FPN.add_fpn_ResNet50_conv5_body
-  # NUM_CLASSES: 14
   NUM_CLASSES: 81
-  # NUM_CLASSES: 2
   # FASTER_RCNN: True # Set to False for inference with custom proposals
   MASK_ON: True
   KEYPOINTS_ON: True
   TRACKING_ON: True
-  SIAMESE_BACKBONE_ON: True 
+  SIBLING_BACKBONE_ON: True # Separate backbone for keypoint detections
 NUM_GPUS: 1
 FPN:
   FPN_ON: True
-  # FPN_ON: False
   MULTILEVEL_ROIS: True
   MULTILEVEL_RPN: True
 FAST_RCNN:
@@ -48,20 +45,16 @@ KRCNN:
   ROI_XFORM_RESOLUTION: 14
   ROI_XFORM_SAMPLING_RATIO: 2
   KEYPOINT_CONFIDENCE: bbox
-SIAMESE:
+SIBLING:
   HEADS:
     - keypoint
 TEST:
   WEIGHTS: outputs/model_merged.pkl
   FORCE_JSON_DATASET_EVAL: True
   DATASETS: ('mot17_train_frcnn_02',)
-  # SCALE: 1080
-  # MAX_SIZE: 1920
   SCALE: 800
   MAX_SIZE: 1333
   NMS: 0.5
   RPN_PRE_NMS_TOP_N: 1000  # Per FPN level
-  # RPN_PRE_NMS_TOP_N: 100  # Per FPN level
   RPN_POST_NMS_TOP_N: 1000
-  # RPN_POST_NMS_TOP_N: 100
 OUTPUT_DIR: outputs

@@ -109,25 +109,30 @@ def add_fpn_onto_conv_body(
         model, fpn_level_info_func()
     )
 
-    if cfg.MODEL.SIAMESE_BACKBONE_ON:
-        merge_at = cfg.SIAMESE.MERGE_AT
-        assert merge_at in [0, 2, 3, 4, 5]
+    if cfg.MODEL.SIBLING_BACKBONE_ON:
+        # Resnet stage to fork backbone weights
+        fork_at = cfg.SIBLING.FORK_AT
+        assert fork_at in [0, 2, 3, 4, 5]
         prefix_len = 0
-        if merge_at == 0:
-            merge_node = core.ScopedName("data".format(merge_at, merge_at))
+        # No shared weights
+        if fork_at == 0:
+            fork_node = core.ScopedName("data".format(fork_at, fork_at))
+        # Fork weights at stage `fork_at`
         else:
-            merge_node = core.ScopedName("res{}_{}_sum".format(merge_at, merge_at))
+            fork_node = core.ScopedName("res{}_{}_sum".format(fork_at, fork_at))
             ops = model.net.Proto().op
-            while (merge_node not in ops[prefix_len].output):
+            while (fork_node not in ops[prefix_len].output):
                 prefix_len += 1
             prefix_len += 2
         temp_net, _ = c2_utils.SuffixNet(
             'temp_net', model.net, prefix_len, blobs_fpn
         )
+        # Preffix sibling backbone
         temp_net_preffixed, _ = c2_utils.RenameNet(
-            "temp_net_preffixed", temp_net, cfg.SIAMESE.PREFFIX, excluded_nodes=[merge_node]
+            "temp_net_preffixed", temp_net, cfg.SIBLING.PREFFIX, excluded_nodes=[fork_node]
         )
         model.AddParams([core.BlobReference(input_name) for op in temp_net_preffixed.Proto().op for input_name in op.input if input_name[-2] == "_"])
+        # Merge the backbones
         model.net = c2_utils.MergeNets("net", [model.net, temp_net_preffixed])
         del temp_net
         del temp_net_preffixed

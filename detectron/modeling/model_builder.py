@@ -91,45 +91,6 @@ def generalized_rcnn(model):
         freeze_conv_body=cfg.TRAIN.FREEZE_CONV_BODY
     )
 
-def track_heads(model):
-    def _single_gpu_build_func(model):
-        blob_conv, dim_conv, spatial_scale_conv = get_func(cfg.MODEL.CONV_BODY)(model)
-        conv_net = copy.deepcopy(model.net.Proto())
-
-        head_loss_gradients = {
-            'track': None,
-        }
-
-        if cfg.FPN.FPN_ON:
-            # After adding the RPN head, restrict FPN blobs and scales to
-            # those used in the RoI heads
-            blob_conv, spatial_scale_conv = _narrow_to_fpn_roi_levels(
-                blob_conv, spatial_scale_conv
-            )
-
-        assert cfg.MODEL.TRACKING_ON
-        # Add the track head
-        head_loss_gradients['track'], blob_track = _add_roi_track_head(
-            model, get_func(cfg.TRCNN.ROI_TRACKING_HEAD), blob_conv, dim_conv,
-            spatial_scale_conv
-        )
-
-        model.net, _ = c2_utils.SuffixNet(
-            'net', model.net, len(conv_net.op), blob_track
-        )
-        create_input_blobs_for_net(model.net.Proto())
-
-        if model.train:
-            loss_gradients = {}
-            for lg in head_loss_gradients.values():
-                if lg is not None:
-                    loss_gradients.update(lg)
-            return loss_gradients
-        else:
-            return None
-
-    optim.build_data_parallel_model(model, _single_gpu_build_func)
-    return model
 
 def rfcn(model):
     # TODO(rbg): fold into build_generic_detection_model
@@ -163,7 +124,7 @@ def create(model_type_func, train=False, gpu_id=0):
     model.only_build_forward_pass = False
     model.target_gpu_id = gpu_id
     model = get_func(model_type_func)(model)
-    # stop gradient at specified nodes
+    # Stop gradient at specified nodes
     if len(cfg.TRAIN.FREEZE_BLOBS):
         blob_references = []
         for gpu_id in range(cfg.NUM_GPUS):
@@ -347,12 +308,12 @@ def _add_roi_mask_head(
         # This requires separate nets for box and mask prediction.
         # So we extract the mask prediction net, store it as its own network,
         # then restore model.net to be the bbox-only network
-        if cfg.MODEL.SIAMESE_BACKBONE_ON and 'mask' in cfg.SIAMESE.HEADS:
+        if cfg.MODEL.SIBLING_BACKBONE_ON and 'mask' in cfg.SIBLING.HEADS:
             mask_net_temp, blob_mask =  c2_utils.SuffixNet(
                 'mask_net_temp', model.net, len(bbox_net.op), blob_mask
             )
             model.mask_net, blob_mask = c2_utils.RenameNet(
-                "mask_net", mask_net_temp, cfg.SIAMESE.PREFFIX, output=blob_mask, excluded_nodes=[core.ScopedName("mask_rois_fpn{}".format(i)) for i in xrange(cfg.FPN.ROI_MIN_LEVEL, cfg.FPN.ROI_MAX_LEVEL + 1)] + [core.ScopedName("keypoint_rois_idx_restore_int32"), str(blob_mask)]
+                "mask_net", mask_net_temp, cfg.SIBLING.PREFFIX, output=blob_mask, excluded_nodes=[core.ScopedName("mask_rois_fpn{}".format(i)) for i in xrange(cfg.FPN.ROI_MIN_LEVEL, cfg.FPN.ROI_MAX_LEVEL + 1)] + [core.ScopedName("keypoint_rois_idx_restore_int32"), str(blob_mask)]
             )
             model.AddParams([core.BlobReference(input_name) for op in model.mask_net.Proto().op for input_name in op.input if input_name[-2] == "_"])
             del mask_net_temp
@@ -387,12 +348,12 @@ def _add_roi_keypoint_head(
         # This requires separate nets for box and keypoint prediction.
         # So we extract the keypoint prediction net, store it as its own
         # network, then restore model.net to be the bbox-only network
-        if cfg.MODEL.SIAMESE_BACKBONE_ON and 'keypoint' in cfg.SIAMESE.HEADS:
+        if cfg.MODEL.SIBLING_BACKBONE_ON and 'keypoint' in cfg.SIBLING.HEADS:
             keypoint_net_temp, _ =  c2_utils.SuffixNet(
                 'keypoint_net_temp', model.net, len(bbox_net.op), blob_keypoint
             )
             model.keypoint_net, _ = c2_utils.RenameNet(
-                "keypoint_net", keypoint_net_temp, cfg.SIAMESE.PREFFIX, excluded_nodes=[core.ScopedName("keypoint_rois_fpn{}".format(i)) for i in xrange(cfg.FPN.ROI_MIN_LEVEL, cfg.FPN.ROI_MAX_LEVEL + 1)] + [core.ScopedName("keypoint_rois_idx_restore_int32"), str(blob_keypoint)]
+                "keypoint_net", keypoint_net_temp, cfg.SIBLING.PREFFIX, excluded_nodes=[core.ScopedName("keypoint_rois_fpn{}".format(i)) for i in xrange(cfg.FPN.ROI_MIN_LEVEL, cfg.FPN.ROI_MAX_LEVEL + 1)] + [core.ScopedName("keypoint_rois_idx_restore_int32"), str(blob_keypoint)]
             )
             model.AddParams([core.BlobReference(input_name) for op in model.keypoint_net.Proto().op for input_name in op.input if input_name[-2] == "_"])
             del keypoint_net_temp
@@ -424,16 +385,16 @@ def _add_roi_track_head(
     )
 
     if not model.train:  # == inference
-        # Inference uses a cascade of box predictions, then track predictions
+        # Inference uses a cascade of box predictions, then object association predictions
         # This requires separate nets for box and track prediction.
         # So we extract the track prediction net, store it as its own
         # # network, then restore model.net to be the bbox-only network
-        if cfg.MODEL.SIAMESE_BACKBONE_ON and 'track' in cfg.SIAMESE.HEADS:
+        if cfg.MODEL.SIBLING_BACKBONE_ON and 'track' in cfg.SIBLING.HEADS:
             track_net_temp, _ =  c2_utils.SuffixNet(
                 'track_net_temp', model.net, len(bbox_net.op), blob_track
             )
             model.track_net, _ = c2_utils.RenameNet(
-                "track_net", track_net_temp, cfg.SIAMESE.PREFFIX, excluded_nodes=[core.ScopedName("track_rois_fpn{}".format(i)) for i in xrange(cfg.FPN.ROI_MIN_LEVEL, cfg.FPN.ROI_MAX_LEVEL + 1)] + [core.ScopedName("track_rois_idx_restore_int32"), str(blob_track)]
+                "track_net", track_net_temp, cfg.SIBLING.PREFFIX, excluded_nodes=[core.ScopedName("track_rois_fpn{}".format(i)) for i in xrange(cfg.FPN.ROI_MIN_LEVEL, cfg.FPN.ROI_MAX_LEVEL + 1)] + [core.ScopedName("track_rois_idx_restore_int32"), str(blob_track)]
             )
             model.AddParams([core.BlobReference(input_name) for op in model.track_net.Proto().op for input_name in op.input if input_name[-2] == "_"])
             del track_net_temp

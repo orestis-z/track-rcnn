@@ -158,16 +158,20 @@ def main(args):
     model = create_model(args.weights)
     dummy_coco_dataset = dummy_datasets.get_coco_dataset()
 
-    for i in xrange(3):
+    # Iterate through all images
+    for i in xrange(5000):
         logger.info("Processing {}".format(i +))
         with c2_utils.NamedCudaScope(0):
             try:
                 workspace.RunNet(model.net.Proto().name)
             except:
                 pass
-            blobs = [(blob_name, workspace.FetchBlob(core.ScopedName(blob_name))) for blob_name in args.blobs]
-        invalid_blobs = [blob for blob in blobs if not hasattr(blob[1], 'shape')]
-        assert len(invalid_blobs) == 0, "Blobs not found: {}".format([blob[0] for blob in invalid_blobs])
+            blobs = [(blob_name, workspace.FetchBlob(core.ScopedName(blob_name))) \
+                for blob_name in args.blobs]
+        invalid_blobs = [blob for blob in blobs if not hasattr(blob[1],
+            'shape')]
+        assert len(invalid_blobs) == 0, "Blobs not found: {}".format([blob[0] \
+            for blob in invalid_blobs])
         save_file = os.path.join(args.output_dir, str(i) + ".npz")
         logger.info("Saving to {}".format(save_file))
         to_save = [blob[1] for blob in blobs]

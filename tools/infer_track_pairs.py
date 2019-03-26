@@ -1,5 +1,4 @@
-"""Script for association inference for an image pair 
-"""
+"""Script for object association inference for image pairs"""
 
 import logging
 import argparse
@@ -82,7 +81,7 @@ def parse_args():
     parser.add_argument(
         '--im-dir',
         dest='im_dir',
-        help='image or folder of images',
+        help='Folder of images',
         default=None
     )
     parser.add_argument(
@@ -122,19 +121,27 @@ def main(args):
     logger.info('Testing with config:')
     logger.info(pprint.pformat(cfg))
 
-    preffix_list = args.preffix_list if len(args.preffix_list) else [""] * len(args.weights_list)
-    model = infer_engine.initialize_mixed_model_from_cfg(args.weights_list, preffix_list=preffix_list)
+    preffix_list = args.preffix_list if len(args.preffix_list) \
+        else [""] * len(args.weights_list)
+    model = infer_engine.initialize_mixed_model_from_cfg(args.weights_list,
+        preffix_list=preffix_list)
 
+    # Iterate through the image sequence
     for path_i, im_path in enumerate(im_paths[:-2]):
         tracking = Tracking(args.thresh)
         im_list = [cv2.imread(im_path), cv2.imread(im_paths[path_i + 1])]
         with c2_utils.NamedCudaScope(0):
-            print("Processing {}, {}, {}".format(args.output_dir, im_names[path_i], im_names[path_i + 1]))
-            cls_boxes_list, cls_segms_list, cls_keyps_list, track_mat_i, _ = infer_engine.multi_im_detect_all(
-                model, im_list, [None, None])
-            tracking.accumulate(cls_boxes_list[0], cls_segms_list[0], cls_keyps_list[0])
-            tracking.accumulate(cls_boxes_list[1], cls_segms_list[1], cls_keyps_list[1], track_mat_i)
-        for i, cls_boxes in enumerate(cls_boxes_list):
+            print("Processing {}, {}, {}".format(args.output_dir,
+                im_names[path_i], im_names[path_i + 1]))
+            # Image pair detections
+            cls_boxes_list, cls_segms_list, cls_keyps_list, track_mat_i, _ = \
+                infer_engine.multi_im_detect_all(model, im_list, [None, None])
+            tracking.accumulate(cls_boxes_list[0], cls_segms_list[0],
+                cls_keyps_list[0])
+            tracking.accumulate(cls_boxes_list[1], cls_segms_list[1],
+                cls_keyps_list[1], track_mat_i)
+        # Visualize image pair associations
+        for i in xrange(2):
             im_list[i] = vis_utils.vis_detections_one_image_opencv(
                 im_list[i],
                 detections=tracking.detection_list[i],
@@ -147,8 +154,10 @@ def main(args):
                 kp_thresh=args.kp_thresh,
                 track_thresh=args.track_thresh,
             )
-        im_pred = np.vstack(im_list )
-        cv2.imwrite("{}/{}-{}_pred.png".format(args.output_dir, im_names[path_i], im_names[path_i + 1]), im_pred)
+        # Merge image pair with visualizations
+        im_pred = np.vstack(im_list)
+        cv2.imwrite("{}/{}-{}_pred.png".format(args.output_dir,
+            im_names[path_i], im_names[path_i + 1]), im_pred)
 
 if __name__ == '__main__':
     workspace.GlobalInit(['caffe2', '--caffe2_log_level=0'])

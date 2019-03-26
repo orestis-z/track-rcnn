@@ -70,8 +70,6 @@ cfg = __C
 # ---------------------------------------------------------------------------- #
 __C.TRAIN = AttrDict()
 
-__C.TRAIN.DEBUG = False
-
 # Initialize network with weights from this .pkl file
 __C.TRAIN.WEIGHTS = ''
 
@@ -135,6 +133,7 @@ __C.TRAIN.PROPOSAL_FILES = ()
 # faster)
 __C.TRAIN.ASPECT_GROUPING = True
 
+# Training loss log period
 __C.TRAIN.EPOCH_PERIOD = 20
 
 # ---------------------------------------------------------------------------- #
@@ -488,7 +487,8 @@ __C.MODEL.KEYPOINTS_ON = False
 # Indicates the model makes tracking predictions
 __C.MODEL.TRACKING_ON = False
 
-__C.MODEL.SIAMESE_BACKBONE_ON = False
+# Additional sibling backbone for multi-task inference
+__C.MODEL.SIBLING_BACKBONE_ON = False
 
 # Indicates the model's computation terminates with the production of RPN
 # proposals (i.e., it outputs proposals ONLY, no actual object detections)
@@ -498,6 +498,7 @@ __C.MODEL.RPN_ONLY = False
 # Use 'prof_dag' to get profiling statistics
 __C.MODEL.EXECUTION_TYPE = 'dag'
 
+# Build the forward model only (no back-propagation ops)
 __C.MODEL.FORWARD_ONLY = False
 
 
@@ -676,6 +677,7 @@ __C.FAST_RCNN.ROI_XFORM_SAMPLING_RATIO = 0
 # pretrained FC layers like in VGG16, and will ignore this option
 __C.FAST_RCNN.ROI_XFORM_RESOLUTION = 14
 
+# Enable the Faster R-CNN loss
 __C.FAST_RCNN.LOSS_ON = True
 
 
@@ -698,6 +700,7 @@ __C.RPN.STRIDE = 16
 # RPN anchor aspect ratios
 __C.RPN.ASPECT_RATIOS = (0.5, 1, 2)
 
+# Enable the RPN loss
 __C.RPN.LOSS_ON = True
 
 # ---------------------------------------------------------------------------- #
@@ -878,7 +881,7 @@ __C.KRCNN.NORMALIZE_BY_VISIBLE_KEYPOINTS = True
 
 
 # ---------------------------------------------------------------------------- #
-# Track Mask R-CNN options ("TRCNN" = Mask R-CNN with Tracking support)
+# Track R-CNN options ("TRCNN" = R-CNN with Tracking support)
 # ---------------------------------------------------------------------------- #
 __C.TRCNN = AttrDict()
 
@@ -888,7 +891,7 @@ __C.TRCNN.ROI_TRACKING_HEAD = ''
 
 # Hidden layer dimension when using an MLP for the RoI track head
 __C.TRCNN.MLP_HEAD_ON = True
-__C.TRCNN.MLP_HEAD_DIM = 256
+__C.TRCNN.MLP_HEAD_DIM = 256 # "Bottleneck" output dim
 __C.TRCNN.MLP_HIDDEN_DIM = 512
 
 # Standard ROI XFORM options (see FAST_RCNN or MRCNN options)
@@ -899,25 +902,34 @@ __C.TRCNN.ROI_XFORM_SAMPLING_RATIO = 0
 # Multi-task loss weight to use for tracking
 __C.TRCNN.LOSS_WEIGHT = 1.0
 
+# Object association loss
 __C.TRCNN.LOSS = 'L2'
+# Track metric architecture
 __C.TRCNN.OUTPUT = 'MatchNet'
 
+# Image pair sampling window during training
 __C.TRCNN.FRAME_DIST_MAX = 1.5 # seconds
 
+# Maximum number of back-tracking frames
 __C.TRCNN.MAX_BACK_TRACK = 0
+# Cut-off threshold of the objects associations during inference (everything below
+# DETECTION_THRESH is set to 0)
 __C.TRCNN.DETECTION_THRESH = 0.8
 
 
 # ---------------------------------------------------------------------------- #
-# Siamese Backbone options
+# Sibling Backbone options
 # ---------------------------------------------------------------------------- #
-__C.SIAMESE = AttrDict()
+__C.SIBLING = AttrDict()
 
-__C.SIAMESE.MERGE_AT = 2
+# ResNet stage to fork weights
+__C.SIBLING.FORK_AT = 2
 
-__C.SIAMESE.PREFFIX = 'sia'
+# Blob prefixes for sibling backbone
+__C.SIBLING.PREFFIX = 'sib'
 
-__C.SIAMESE.HEADS = [] # mask, keypoint, track
+# Heads to attach on sibling backbone
+__C.SIBLING.HEADS = [] # mask, keypoint, track
 
 
 # ---------------------------------------------------------------------------- #
@@ -1043,10 +1055,13 @@ __C.EXPECTED_RESULTS_EMAIL = ''
 # specified by DOWNLOAD_CACHE
 __C.DOWNLOAD_CACHE = '/tmp/detectron-download-cache'
 
-# visualize net graph
+# Visualize net graph
 __C.VIS_NET = False
 
+# Continue training if an exception occurs
 __C.CONTINUE_ON_ERROR = False
+
+# Don't override existing model weights
 __C.SKIP_EXISTING_WEIGHTS = False
 
 # ---------------------------------------------------------------------------- #

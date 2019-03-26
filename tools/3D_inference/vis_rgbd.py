@@ -26,6 +26,7 @@ import detectron.utils.vis as vis_utils
 I = [2, 0, 1]
 # I = [1, 2, 0]
 
+# Tolerance in difference of timestamps for rgb and depth
 DELTA_T_MAX = 0.02
 
 dataset_keypoints, _ = keypoint_utils.get_keypoints()
@@ -42,11 +43,13 @@ def parse_args():
     parser.add_argument(
         '--dataset',
         default='tum',
+        help='dataset type. tum or princeton',
         type=str
     )
     parser.add_argument(
         '--kps-3d',
         dest='kps_3d',
+        help='Pre-computed 3d keypoints in world-frame',
         default='',
         type=str
     )
@@ -59,12 +62,14 @@ def parse_args():
     parser.add_argument(
         '--k-size',
         dest='k_size',
+        help='Depth median filter size',
         default=3,
         type=int
     )
     parser.add_argument(
         '--shrink-factor',
         dest='shrink_factor',
+        help='image + depth shrink factor to speed up rendering',
         default=1,
         type=int
     )
@@ -79,6 +84,7 @@ def parse_args():
     return parser.parse_args()
 
 def q_mult(q1, q2):
+    """Quaternion multiplication"""
     w1, x1, y1, z1 = q1
     w2, x2, y2, z2 = q2
     w = w1 * w2 - x1 * x2 - y1 * y2 - z1 * z2
@@ -88,14 +94,18 @@ def q_mult(q1, q2):
     return w, x, y, z
 
 def q_conjugate(q):
+    """Quaternion inverse"""
     w, x, y, z = q
     return (w, -x, -y, -z)
 
-def qv_mult(q1, v1):    
+def qv_mult(q1, v1):
+    """Quaternion-vector multiplication"""  
     q2 = [0.0] + v1.tolist()
     return q_mult(q_mult(q1, q2), q_conjugate(q1))[1:]
 
 def map_kps_3d(kps, p_map):
+    """Map keypoints using `p_map` to 3D and filter invalid points
+    """
     # Draw mid shoulder / mid hip first for better visualization.
     mid_shoulder = (
         kps[:2, dataset_keypoints.index('right_shoulder')] +
@@ -181,6 +191,8 @@ def vis_keypoints_3d(ax, kps_3d, valid_3d, obj_id, kp_thresh=2, n_cmaps=len(cmap
             ax.plot([p2[I[0]]], [p2[I[1]]], [p2[I[2]]], color=colors[l], **point_kwargs)
 
 def plane_to_cam(p, Z, k, shrink_factor=1):
+    """Map pixels and corresponding depth to 3D camera coordinates
+    """
     fx, cx, fy, cy = k
     u, v = p
     z = Z[v, u];
@@ -189,9 +201,13 @@ def plane_to_cam(p, Z, k, shrink_factor=1):
     return x, y, z
 
 def cam_to_world(q, t, v):
+    """Map camera coordinates to world-frame
+    """
     return qv_mult(q, v) + t, v[2] > 0
 
 def main(args):
+    """Map pixels and corresponding depth to 3D camera coords
+    """
     CAMERA_FRAME = 'cam-frame' in args.opts
     if CAMERA_FRAME:
         x_min = -1
@@ -389,6 +405,7 @@ def main(args):
 
     if "record-kps" in args.opts:
         np.save(open(os.path.join(args.datadir, 'kps_3d.npy'), 'w'), np.array(kps_3d_list))
+
 
 if __name__ == '__main__':
     args = parse_args()

@@ -264,6 +264,7 @@ def test_net(
         im = cv2.imread(entry['image'])
         with c2_utils.NamedCudaScope(gpu_id):
             if cfg.MODEL.TRACKING_ON:
+                # Single image inference on the first frame
                 if i == 0:
                     im_prev = im
                     box_proposals_prev = box_proposals
@@ -280,6 +281,7 @@ def test_net(
                     im_scale_prev = im_scale_list[0]
                     boxes_prev = boxes_list[0]
                     fpn_res_sum_prev = fpn_res_sum_list[0]
+                # Pairwise image inference on the second frame
                 elif i == 1:
                     cls_boxes_list, cls_segms_list, cls_keyps_list, track_mat_i, extras = multi_im_detect_all(
                         model,
@@ -293,6 +295,7 @@ def test_net(
                     boxes_prev = boxes_list[1]
                     im_scale_prev = im_scale_list[1]
                     fpn_res_sum_prev = fpn_res_sum_list[1]
+                # Sequential image inference after the second frame
                 else:
                     cls_boxes_i, cls_segms_i, cls_keyps_i, track_mat_i, extras = im_detect_all_seq(
                         model,
@@ -345,6 +348,7 @@ def test_net(
         if cfg.VIS:
             im_name = os.path.splitext(os.path.basename(entry['image']))[0]
             if MODEL.TRACKING_ON:
+                # Pairwise visualization for the first image pair
                 if i == 1:
                     _, _, _, _, color_inds_prev = vis_utils.vis_image_pair_opencv(
                         im_list,
@@ -356,6 +360,7 @@ def test_net(
                         show_track=True,
                         show_box=True,
                     )
+                # Sequential visualization after the first image pair
                 else:
                     _, _, _, color_inds_prev = vis_utils.vis_image_pair_opencv(
                         [None, im],
@@ -411,8 +416,8 @@ def initialize_model_from_cfg(weights_file, gpu_id=0):
 
 
 def initialize_mixed_model_from_cfg(weights_list, preffix_list, gpu_id=0):
-    """Initialize a model from the global cfg. Loads test-time weights and
-    creates the networks in the Caffe2 workspace.
+    """Initialize a model from the global cfg. Loads and combinds multiple test-time weights
+    and creates the networks in the Caffe2 workspace.
     """
     model = model_builder.create(cfg.MODEL.TYPE, train=False, gpu_id=gpu_id)
     

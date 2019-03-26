@@ -58,6 +58,7 @@ def get_minibatch_blob_names(is_training=True):
         blob_names += fast_rcnn_roi_data.get_fast_rcnn_blob_names(
             is_training=is_training
         )
+    # Include pre-calculated blobs
     blob_names += list(cfg.DATA_LOADER.EXTRA_BLOBS)
     if 'track_n_rois' in cfg.DATA_LOADER.EXTRA_BLOBS:
         blob_names += ['track_n_rois_one', 'track_n_rois_two'] 
@@ -72,7 +73,8 @@ def get_minibatch(roidb):
     # Get the input image blob, formatted for caffe2
     im_blob, im_scales = _get_image_blob(roidb)
     blobs['data'] = im_blob
-
+    
+    # Calculate tracking metadata if using pre-calculated blobs
     if len(cfg.DATA_LOADER.EXTRA_BLOBS):
         blobs_extra = _get_extra_blobs(roidb)
         blobs.update(blobs_extra)
@@ -129,6 +131,8 @@ def _get_image_blob(roidb):
     return blob, im_scales
 
 def _get_extra_blobs(roidb):
+    """Load pre-calculated blobs from `path/to/image/directory/../blobs/{image_name}.npz`
+    """
     num_images = len(roidb)
     blobs = {}
     arrs_list = []

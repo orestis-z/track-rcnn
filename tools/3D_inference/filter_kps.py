@@ -1,4 +1,4 @@
-"""Filter keypoint trajectories.
+"""Filters keypoint trajectories.
 
 Applies median or gaussian filter.
 """
@@ -23,21 +23,25 @@ def parse_args():
     parser.add_argument(
         '--kps-3d',
         dest='kps_3d',
+        help='Pre-computed 3d keypoints in world-frame',
         type=str
     )
     parser.add_argument(
         '--output-dir',
-        help="output_dir",
+        dest="output_dir",
+        help="output directory for the filtered keypoints",
         type=str
     )
     parser.add_argument(
         '--filter',
         dest="filter_type",
+        help='guassian or median filter',
         type=str
     )
     parser.add_argument(
         '--filter-var',
         dest="filter_var",
+        help='Filter size parameter',
         type=float
     )
     parser.add_argument(
@@ -52,6 +56,8 @@ def parse_args():
 
 
 def filter_valid(p, sc, valid, kp_thresh=2):
+    """filter valid keypoints
+    """
     return np.where(
         np.logical_and(
             sc > kp_thresh,

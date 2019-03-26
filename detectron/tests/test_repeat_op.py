@@ -14,6 +14,8 @@ import detectron.utils.c2 as c2_utils
 
 
 class RepeatOpTest(unittest.TestCase):
+    """Unit test class for repeat operation. Tests op and corresponding gradient.
+    """
 
     def _run_repeat_op(self, X, repeats):
         op = core.CreateOperator('Repeat', ['X', 'repeats'], ['Y'])
@@ -25,7 +27,8 @@ class RepeatOpTest(unittest.TestCase):
 
     def _run_repeat_grad_op(self, G, repeats):
         n = int(G.shape[0] / repeats)
-        opConst = core.CreateOperator('ConstantFill', [], 'lengths', value=repeats, shape=(n,), dtype=caffe2_pb2.TensorProto.INT32)
+        opConst = core.CreateOperator('ConstantFill', [], 'lengths', value=repeats,
+            shape=(n,), dtype=caffe2_pb2.TensorProto.INT32)
         op = core.CreateOperator('LengthsSum', ['G', 'lengths'], ['Y'])
         workspace.FeedBlob('G', G)
         workspace.RunOperatorOnce(opConst)

@@ -117,8 +117,7 @@ def add_rpn_blobs(blobs, im_scales, roidb):
         'has_visible_keypoints', 'boxes', 'segms', 'seg_areas', 'gt_classes',
         'gt_overlaps', 'is_crowd', 'box_to_gt_ind_map', 'gt_keypoints', 'track_ids'
     ]
-    if cfg.TRAIN.DEBUG:
-        valid_keys += ['id', 'image']
+    # valid_keys += ['id', 'image']
     minimal_roidb = [{} for _ in range(len(roidb))]
     for i, e in enumerate(roidb):
         for k in valid_keys:

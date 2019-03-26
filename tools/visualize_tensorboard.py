@@ -31,6 +31,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description='End-to-end inference')
     parser.add_argument(
         '--file',
+        help='CSV file of the losses from tensorboard',
         default=None,
         type=str,
         nargs='+'
@@ -38,14 +39,23 @@ def parse_args():
     parser.add_argument(
         '--smooth-sigma',
         dest='smooth_sigma',
+        help='gaussian smoothing strength (sigma)',
         default=1,
         type=float,
     )
     parser.add_argument(
         '--iter-max',
         dest='iter_max',
+        help='maximum x value (iteration)',
         default=None,
         type=int,
+    )
+    parser.add_argument(
+        '--x-label',
+        dest='x_label',
+        help='x label',
+        default="iter",
+        type=str,
     )
     if len(sys.argv) == 1:
         parser.print_help()
@@ -57,9 +67,11 @@ def main(args):
     logger = logging.getLogger(__name__)
 
     res_list = []
+    # Iterate result files
     for file in args.file:
         with open(file) as f:
-            res = np.array([[float(x) for x in line.split(",")] for i, line in enumerate(f.readlines()) if i > 0])
+            res = np.array([[float(x) for x in line.split(",")] \
+                for i, line in enumerate(f.readlines()) if i > 0])
         res_list.append(res)
 
     smooth = lambda data, sigma=args.smooth_sigma: gaussian_filter1d(data, sigma)
@@ -72,10 +84,11 @@ def main(args):
         "B=256, F=512",
         "B=64, F=128",
     )
-    lw = 2
+    lw = 2 # line width
 
     fig = plt.figure()
-    fig.set_size_inches(6, 6)
+    fig.set_size_inches(6, 6) # figure size
+    # Iterate through results
     for j, res in enumerate(res_list):
         val = res[:, 2]
         t = res[:, 1]
@@ -87,6 +100,7 @@ def main(args):
         plt.legend()
         plt.ylabel("[-]", rotation=0, labelpad=10)
         plt.xlabel(x_label)
+        # scientific x label format
         plt.ticklabel_format(style='sci', axis='x', scilimits=(0,0))
     plt.grid()
     plt.show()

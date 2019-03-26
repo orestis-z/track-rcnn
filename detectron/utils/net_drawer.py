@@ -1,3 +1,5 @@
+"""Adapted from https://github.com/pytorch/pytorch/blob/master/caffe2/python/net_drawer.py"""
+
 import pydot
 import numpy as np
 
@@ -62,11 +64,13 @@ def GetPydotGraph(
             sub_graph = None
             if 'mask' in input_name:
                 sub_graph = sub_graph_mask
-            elif 'kps' in input_name or 'keypoint' in input_name or 'pose' in input_name or 'conv_fcn' in input_name:
+            elif 'kps' in input_name or 'keypoint' in input_name or 'pose' in input_name \
+                    or 'conv_fcn' in input_name:
                 sub_graph = sub_graph_kps
             elif 'track' in input_name:
                 sub_graph = sub_graph_track
-            elif ('cls' in input_name or 'bbox' in input_name or 'fc' in input_name) and 'rpn' not in input_name and 'fcn' not in input_name:
+            elif ('cls' in input_name or 'bbox' in input_name or 'fc' in input_name) \
+                    and 'rpn' not in input_name and 'fcn' not in input_name:
                 sub_graph = sub_graph_frcnn
             if '/fpn' in input_name:
                 sub_graph = sub_graph_fpn
@@ -94,11 +98,13 @@ def GetPydotGraph(
             sub_graph = None
             if 'mask' in output_name:
                 sub_graph = sub_graph_mask
-            elif 'kps' in output_name or 'keypoint' in output_name or 'pose' in output_name or 'conv_fcn' in output_name:
+            elif 'kps' in output_name or 'keypoint' in output_name or 'pose' in output_name \
+                    or 'conv_fcn' in output_name:
                 sub_graph = sub_graph_kps
             elif 'track' in output_name:
                 sub_graph = sub_graph_track
-            elif ('cls' in output_name or 'bbox' in output_name or 'fc' in output_name) and 'rpn' not in output_name and 'fcn' not in output_name:
+            elif ('cls' in output_name or 'bbox' in output_name or 'fc' in output_name) \
+                    and 'rpn' not in output_name and 'fcn' not in output_name:
                 sub_graph = sub_graph_frcnn
             elif '/fpn' in output_name:
                 sub_graph = sub_graph_fpn

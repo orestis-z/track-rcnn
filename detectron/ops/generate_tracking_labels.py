@@ -20,7 +20,8 @@ class GenerateTrackingLabelsOp(object):
         track_ids_one = inputs[0].data
         track_ids_two = inputs[1].data
 
-        tracking_labels = np.array([id_one == id_two for id_one in track_ids_one for id_two in track_ids_two], dtype=np.int32)
+        tracking_labels = np.array([id_one == id_two \
+            for id_one in track_ids_one for id_two in track_ids_two], dtype=np.int32)
         n_matches = sum(tracking_labels)
 
         assert n_matches > 0, "Image pair with no matches encountered"

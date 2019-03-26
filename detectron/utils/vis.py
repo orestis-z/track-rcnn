@@ -210,7 +210,7 @@ def distinct_colors(n):
 def vis_image_pair_opencv(
         im_list, boxes_list, segms_list=None, keypoints_list=None, track=None, thresh=0.9, kp_thresh=2, track_thresh=0.7,
         show_box=False, dataset=None, show_class=False, show_track=False, show_track_ids=False, colors=None, color_inds_list=None):
-    """Constructs a numpy array with the detections visualized."""
+    """Visualize object associations in an image pair."""
 
     classes_list = []
     keep_idx = [[], []]
@@ -415,13 +415,14 @@ def vis_one_image_opencv(
 
     return im
 
+# object id to color index map
 obj_id_to_i_color = {}
 
 def vis_detections_one_image_opencv(
         im, detections, detections_prev=[], trace=None, thresh=0.9, kp_thresh=2, track_thresh=0.0,
         show_box=False, dataset=None, show_class=False, show_track=False, n_colors=None,
 	track_mat=None, debug=False):
-    """Constructs a numpy array with the detections visualized."""
+    """Visualization for tracking inference."""
     global obj_id_to_i_color
 
     classes =  [det.cls for det in detections]
@@ -563,47 +564,6 @@ def vis_tracking_one_image_opencv(
         det_str += ' {:0.2f}'.format(conf).lstrip('0')
         im = vis_class(im, (bbox[0], bbox[1] - 2), det_str)
         
-    return im
-
-def vis_one_image_opencv_gt(
-        im, classes, boxes, masks=None, keypoints=None,
-        show_box=False, dataset=None, show_class=False):
-    """Constructs a numpy array with the detections visualized."""
-
-    if boxes is None or boxes.shape[0] == 0:
-        return im
-
-    if masks is not None and len(masks) > 0:
-        color_list = colormap()
-        mask_color_id = 0
-
-    # Display in largest to smallest order to reduce occlusion
-    areas = (boxes[:, 2] - boxes[:, 0]) * (boxes[:, 3] - boxes[:, 1])
-    sorted_inds = np.argsort(-areas)
-
-    for i in sorted_inds:
-        bbox = boxes[i, :4]
-
-        # show box (off by default)
-        if show_box:
-            im = vis_bbox(
-                im, (bbox[0], bbox[1], bbox[2] - bbox[0], bbox[3] - bbox[1]))
-
-        # show class (off by default)
-        if show_class:
-            class_str = dataset.classes[classes[i]] if dataset is not None else \
-                'id{:d}'.format(classes[i])
-            im = vis_class(im, (bbox[0], bbox[1] - 2), class_str)
-        # show mask
-        if masks is not None and len(masks) > i:
-            color_mask = color_list[mask_color_id % len(color_list), 0:3]
-            mask_color_id += 1
-            im = vis_mask(im, masks[..., i], color_mask)
-
-        # show keypoints
-        if keypoints is not None and len(keypoints) > i:
-            im = vis_keypoints(im, keypoints[i], 0)
-
     return im
 
 
@@ -749,13 +709,3 @@ def vis_one_image(
     output_name = os.path.basename(im_name) + '.' + ext
     fig.savefig(os.path.join(output_dir, '{}'.format(output_name)), dpi=dpi)
     plt.close('all')
-
-
-def get_ax(n, figsize=(12, 12), shape=(), title=None):
-    _, ax = plt.subplots(n, 1, figsize=figsize)
-    for i in xrange(n):
-        ax[i].axis('off')
-        ax[i].set_ylim(shape[0], 0)
-        ax[i].set_xlim(0, shape[1])
-        ax[i].set_title(title, color='white')
-    return ax

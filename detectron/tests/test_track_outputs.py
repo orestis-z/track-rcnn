@@ -22,6 +22,8 @@ c2_utils.import_custom_ops()
 
 
 class TrackOutputsTest(unittest.TestCase):
+    """Unit test class for tracking output heads.
+    """
 
     def _add_track_outputs(self, X, track_n_rois):
         model = DetectionModelHelper(train=False, num_classes=1)
@@ -35,7 +37,8 @@ class TrackOutputsTest(unittest.TestCase):
  
     def _add_track_outputs_np(self, arr_in, track_n_rois):
         if cfg.TRCNN.OUTPUT == 'Cosine':
-            track_fc_one, track_fc_two, _ = np.split(arr_in, [track_n_rois[0], track_n_rois[0] + track_n_rois[1]])
+            track_fc_one, track_fc_two, _ = np.split(arr_in, [track_n_rois[0],
+                track_n_rois[0] + track_n_rois[1]])
             track_fc_one_len, track_fc_two_len = track_n_rois
             track_fc_one_repeat = np.repeat(track_fc_one, track_fc_two_len, axis=0)
             track_fc_two_tile = np.tile(track_fc_two, (track_fc_one_len, 1))

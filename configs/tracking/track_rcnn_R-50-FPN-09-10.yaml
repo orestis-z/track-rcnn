@@ -1,12 +1,8 @@
-# SKIP_EXISTING_WEIGHTS: True
 SKIP_EXISTING_WEIGHTS: False
 CONTINUE_ON_ERROR: True
-# DEDUP_BOXES: 0.0
 MODEL:
   TYPE: generalized_rcnn
   CONV_BODY: FPN.add_fpn_ResNet50_conv5_body
-  # NUM_CLASSES: 2
-  # NUM_CLASSES: 14
   NUM_CLASSES: 81
   # FASTER_RCNN: True # Set to False for inference with custom proposals
   # RPN_ONLY: True # Set to False for inference
@@ -58,9 +54,6 @@ TRAIN:
   SNAPSHOT_ITERS: 1000
 TEST:
   DATASETS: ('mot17_train_dpm_09', 'mot17_train_dpm_10', )
-  # DATASETS: ('mot17_test_frcnn_01', 'mot17_test_frcnn_03', 'mot17_test_frcnn_06', 'mot17_test_frcnn_07', 'mot17_test_frcnn_08', 'mot17_test_frcnn_12', 'mot17_test_frcnn_14', 'mot17_test_dpm_01', 'mot17_test_dpm_03', 'mot17_test_dpm_06', 'mot17_test_dpm_07', 'mot17_test_dpm_08', 'mot17_test_dpm_12', 'mot17_test_dpm_14', 'mot17_test_sdp_01', 'mot17_test_sdp_03', 'mot17_test_sdp_06', 'mot17_test_sdp_07', 'mot17_test_sdp_08', 'mot17_test_sdp_12', 'mot17_test_sdp_14', )
-  # DATASETS: ('mot17_test_frcnn_01', 'mot17_test_frcnn_03', 'mot17_test_frcnn_06', 'mot17_test_frcnn_07', 'mot17_test_frcnn_08', 'mot17_test_frcnn_12', 'mot17_test_frcnn_14')
-  # PROPOSAL_FILES: ('~/datasets/MOT17/train/MOT17-02-DPM/det/proposals.pickle',)
   SCALE: 800
   MAX_SIZE: 1333
   NMS: 0.5

@@ -22,6 +22,8 @@ c2_utils.import_custom_ops()
 
 
 class TrackLossesTest(unittest.TestCase):
+   """Unit test class for tracking losses.
+    """
 
     def _add_track_losses(self, X, X_gt):
         model = DetectionModelHelper(train=False, num_classes=1)

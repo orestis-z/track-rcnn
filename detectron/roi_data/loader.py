@@ -137,10 +137,14 @@ class RoIDataLoader(object):
     def _shuffle_roidb_inds(self):
         """Randomly permute the training roidb. Not thread safe."""
         if cfg.MODEL.TRACKING_ON:
-            roidbs = [[el for el in self._roidb if el['dataset'].name == name] for name in cfg.TRAIN.DATASETS]
+            # Ensure that individual sequences don't get mixed up
+            roidbs = [[el for el in self._roidb if el['dataset'].name == name]
+                for name in cfg.TRAIN.DATASETS]
             perms = [None] * len(roidbs)
             for i, roidb in enumerate(roidbs):
                 n_idx = len(roidb)
+                # Sample from a window of `TRCNN.FRAME_DIST_MAX` seconds
+                # which is equal to `delta_frames / framerate`
                 delta_frames = int(cfg.TRCNN.FRAME_DIST_MAX * float(roidb[0]['dataset'].COCO.dataset["info"]['frame_rate']))
                 perms[i] = np.random.permutation(np.arange(len(roidb)))
                 perm_one = perms[i] + np.random.randint(delta_frames + 1, size=n_idx)

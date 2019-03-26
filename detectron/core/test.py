@@ -50,12 +50,16 @@ logger = logging.getLogger(__name__)
 
 
 def im_detect_all(model, im, box_proposals, timers=None):
+    """Single image inference
+    """
     cls_boxes_list, cls_segms_list, cls_keyps_list, _, _ = multi_im_detect_all(model, [im], [box_proposals], timers, tracking=False)
 
     return cls_boxes_list[0], cls_segms_list[0], cls_keyps_list[0]
 
 
 def multi_im_detect_all(model, im_list, box_proposals_list, timers=None, tracking=True):
+    """Multi-image inference (e.g. image pair object associations)
+    """
     if timers is None:
         timers = defaultdict(Timer)
 
@@ -151,6 +155,8 @@ def multi_im_detect_all(model, im_list, box_proposals_list, timers=None, trackin
     return cls_boxes_list, cls_segms_list, cls_keyps_list, track_mat, [im_scale_list, boxes_list, fpn_res_sum_list]
 
 def im_detect_all_seq(model, im, box_proposals, prev, timers=None, tracking=True):
+    """Sequential inference based on information from a previous frame
+    """
     if timers is None:
         timers = defaultdict(Timer)
 
@@ -176,10 +182,7 @@ def im_detect_all_seq(model, im, box_proposals, prev, timers=None, tracking=True
         )
     for blob_name in fpn_res_blob_names:
         fpn_res_sum[blob_name] = workspace.FetchBlob(core.ScopedName(blob_name))
-
     timers['im_detect_bbox'].toc()
-
-    boxes_raw = boxes
 
     # score and boxes are from the whole image after score thresholding and nms
     # (they are not separated by class)
@@ -875,21 +878,18 @@ def combine_heatmaps_size_dep(hms_ts, ds_ts, us_ts, boxes, heur_f):
 
 
 def im_detect_track(model, im_scale_list, boxes_list, fpn_res_sum_list):
-    """Infer instance keypoint poses. This function must be called after
+    """Infer object associations. This function must be called after
     im_detect_bbox as it assumes that the Caffe2 workspace is already populated
     with the necessary blobs.
 
     Arguments:
         model (DetectionModelHelper): the detection model to use
-        im_scales (list): image blob scales as returned by im_detect_bbox
-        boxes (ndarray): R x 4 array of bounding box detections (e.g., as
+        im_scales_list (list of lists): list of image blob scales as returned by im_detect_bbox
+        boxes_list (ndarray list): list of R x 4 array of bounding box detections (e.g., as
             returned by im_detect_bbox)
 
     Returns:
-        pred_heatmaps (ndarray): R x J x M x M array of keypoint location
-            logits (softmax inputs) for each of the J keypoint types output
-            by the network (must be processed by keypoint_results to convert
-            into point predictions in the original image coordinate space)
+        similarity (ndarray): (R1*R2)-dimensional array of pairwise object similarities
     """
 
     # Merge fpn_res_sums
@@ -908,8 +908,8 @@ def im_detect_track(model, im_scale_list, boxes_list, fpn_res_sum_list):
     if cfg.FPN.MULTILEVEL_ROIS:
         _add_multilevel_rois_for_test(inputs, 'track_rois')
 
+    # Additional required inputs
     inputs['track_n_rois'] = np.array([len(boxes) for boxes in boxes_list], dtype=np.int32)
-
     inputs['track_n_rois_one'] = np.array([inputs['track_n_rois'][0]])
     if len(inputs['track_n_rois']) > 1:
         inputs['track_n_rois_two'] = np.array([inputs['track_n_rois'][1]])
@@ -1065,11 +1065,19 @@ def keypoint_results(cls_boxes, pred_heatmaps, ref_boxes):
 
 
 def track_results(cls_boxes_list, track):
+    """Convert track vector to track matrix. Applies object association cutoff threshold 
+    and ensures that the associations belong to the same class.
+    """
     n_rois, classes_one = _convert_from_cls_format(cls_boxes_list[0])
     m_rois, classes_two = _convert_from_cls_format(cls_boxes_list[1])
 
     track_mat = track.reshape((n_rois, m_rois))
-    track_mat = np.where(np.bitwise_and(np.array([[class_one == class_two for class_two in classes_two] for class_one in classes_one]), track_mat > cfg.TRCNN.DETECTION_THRESH ), track_mat, np.zeros((n_rois, m_rois)))
+    track_mat = np.where(
+        np.bitwise_and(
+            np.array([[class_one == class_two \
+                 for class_two in classes_two] for class_one in classes_one]),
+            track_mat > cfg.TRCNN.DETECTION_THRESH),
+        track_mat, np.zeros((n_rois, m_rois)))
 
     return track_mat
 

@@ -1,3 +1,5 @@
+"""Script to merge weights from multiple weights files"""
+
 import logging
 import argparse
 import cv2
@@ -63,10 +65,13 @@ def main(args):
         args.weights_list[i] = cache_url(weights_file, cfg.DOWNLOAD_CACHE)
     assert_and_infer_cfg(cache_urls=False)
 
-    preffix_list = args.preffix_list if len(args.preffix_list) else [""] * len(args.weights_list)
+    preffix_list = args.preffix_list if len(args.preffix_list) \
+        else [""] * len(args.weights_list)
     model = model_builder.create(cfg.MODEL.TYPE, train=False)
+    # Initialize GPU from weights files
     for i, weights_file in enumerate(args.weights_list):
-        nu.initialize_gpu_from_weights_file(model, weights_file, gpu_id=0, preffix=preffix_list[i])
+        nu.initialize_gpu_from_weights_file(model, weights_file, gpu_id=0,
+            preffix=preffix_list[i])
     nu.broadcast_parameters(model)
     blobs = {}
     # Save all parameters
@@ -76,6 +81,7 @@ def main(args):
         if unscoped_name not in blobs:
             if workspace.HasBlob(scoped_name):
                 blobs[unscoped_name] = workspace.FetchBlob(scoped_name)
+    # Save merged weights file
     save_object(dict(blobs=blobs), args.output_wts)
 
 if __name__ == '__main__':
