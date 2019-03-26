@@ -124,7 +124,7 @@ python tools/infer_track_pairs.py --wts path/to/weights.pkl --cfg path/to/cfg.ya
 Merging weights from mulitple files for multi-task inference with a sibling backbone:
 
 ```
-python2 tools/infer_track_sequence.py --wts path/to/weights/tracking.pkl path/to/weights/kps.pkl --cfg path/to/multitask-cfg.yaml --preffixes "" sib --im-dir path/to/image/sequence show-track
+python tools/infer_track_sequence.py --wts path/to/weights/tracking.pkl path/to/weights/kps.pkl --cfg path/to/multitask-cfg.yaml --preffixes "" sib --im-dir path/to/image/sequence show-track
 ```
 
 <div align="center">
@@ -145,7 +145,7 @@ python tools/test_tracking.py --cfg path/to/cfg.yaml --model model_iterX.pkl pro
 
 ### 3D Keypoints
 
-The following example use the _Princeton Tracking Benchmark_
+The following examples use the _Princeton Tracking Benchmark_
 for 3D human pose inference. ([tracking.cs.princeton.edu/dataset.html](http://tracking.cs.princeton.edu/dataset.html)).
 We define the path to the desired sequence as `PRINCETON_SEQ`.
 
