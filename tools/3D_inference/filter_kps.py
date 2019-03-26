@@ -35,7 +35,8 @@ def parse_args():
     parser.add_argument(
         '--filter',
         dest="filter_type",
-        help='guassian or median filter',
+        help='gaussian or median filter',
+        default='median',
         type=str
     )
     parser.add_argument(
@@ -66,7 +67,7 @@ def filter_valid(p, sc, valid, kp_thresh=2):
         p, np.zeros(p.shape) * np.NaN)
 
 def main(args):
-    if args.filter_type == "guassian":
+    if args.filter_type == "gaussian":
         filt = lambda data: gaussian_filter1d(data, args.filter_var)
     elif args.filter_type == "median":
         filt = lambda data: medfilt(data, int(args.filter_var))

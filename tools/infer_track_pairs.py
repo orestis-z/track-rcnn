@@ -53,7 +53,7 @@ def parse_args():
     parser.add_argument(
         '--output-dir',
         dest='output_dir',
-        help='directory for visualization pdfs (default: outputs/infer_simple)',
+        help='directory for visualization results (default: outputs/infer_track_pairs)',
         default='outputs/infer_track_pairs',
         type=str
     )
@@ -109,7 +109,7 @@ def main(args):
 
     merge_cfg_from_file(args.cfg)
     cfg.NUM_GPUS = 1
-    if "mot-classes" in args.opt:
+    if "mot-classes" in args.opts:
         dummy_dataset = dummy_datasets.get_mot_dataset()
         cfg.NUM_CLASSES = 14
     else:
@@ -128,7 +128,7 @@ def main(args):
 
     # Iterate through the image sequence
     for path_i, im_path in enumerate(im_paths[:-2]):
-        tracking = Tracking(args.thresh)
+        tracking = Tracking(args.thresh, cfg.TRCNN.MAX_BACK_TRACK)
         im_list = [cv2.imread(im_path), cv2.imread(im_paths[path_i + 1])]
         with c2_utils.NamedCudaScope(0):
             print("Processing {}, {}, {}".format(args.output_dir,
@@ -137,16 +137,16 @@ def main(args):
             cls_boxes_list, cls_segms_list, cls_keyps_list, track_mat_i, _ = \
                 infer_engine.multi_im_detect_all(model, im_list, [None, None])
             tracking.accumulate(cls_boxes_list[0], cls_segms_list[0],
-                cls_keyps_list[0])
+                cls_keyps_list[0], None)
             tracking.accumulate(cls_boxes_list[1], cls_segms_list[1],
-                cls_keyps_list[1], track_mat_i)
+                cls_keyps_list[1], None, track_mat_i)
         # Visualize image pair associations
         for i in xrange(2):
             im_list[i] = vis_utils.vis_detections_one_image_opencv(
                 im_list[i],
                 detections=tracking.detection_list[i],
                 detections_prev=tracking.detection_list[0] if i == 1 else [],
-                dataset=dummy_mot_dataset,
+                dataset=dummy_dataset,
                 show_class=('show-class' in args.opts),
                 show_track=('show-track' in args.opts),
                 show_box=True,

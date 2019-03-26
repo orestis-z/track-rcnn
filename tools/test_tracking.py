@@ -255,7 +255,7 @@ def main(args):
                         im_dir.split("/")[-2] + ".txt")
                 # Use custom proposals if provided
                 if "proposals" in args.opts:
-                    proposals = pickle.load(open(os.path.join(*(im_dir.split("/")[:-1] + \
+                    proposals = pickle.load(open(os.path.join('/', *(im_dir.split("/")[:-1] + \
                         ["det/proposals.pkl"])), 'r'))
                 else:
                     proposals = None

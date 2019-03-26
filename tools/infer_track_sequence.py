@@ -101,12 +101,12 @@ def parse_args():
     parser.add_argument(
         '--n-colors',
         dest='n_colors',
-        default=None,
+        default=10,
         type=int
     )
     parser.add_argument(
         '--proposals',
-        help='path to proposals'
+        help='path to proposals',
         default=None,
         type=str
     )

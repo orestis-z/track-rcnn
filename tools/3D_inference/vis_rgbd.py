@@ -50,7 +50,7 @@ def parse_args():
         '--kps-3d',
         dest='kps_3d',
         help='Pre-computed 3d keypoints in world-frame',
-        default='',
+        default=None,
         type=str
     )
     parser.add_argument(
@@ -228,10 +228,11 @@ def main(args):
         kps_3d_list = []
 
     kps_3d_arr = None
-    if os.path.exists(args.kps_3d):
-        kps_3d_arr = np.load(open(args.kps_3d))
-    else:
-        raise "{} does not exist".format(args.kps_3d)
+    if args.kps_3d is not None:
+        if os.path.exists(args.kps_3d):
+            kps_3d_arr = np.load(open(args.kps_3d))
+        else:
+            raise ValueError, "{} does not exist".format(args.kps_3d)
 
     if args.dataset == 'tum':
         fx = 525.0  # focal length x
@@ -353,53 +354,56 @@ def main(args):
                         kps_3d, valid_3d = map_kps_3d(kps, p_map)
                         if "record-kps" in args.opts:
                             kps_3d_list_i.append((obj_id, kps_3d, valid_3d))
-                        # vis_keypoints_3d(ax, kps_3d, valid_3d, obj_id)
+                        if "no-plot" not in args.opts:
+                            vis_keypoints_3d(ax, kps_3d, valid_3d, obj_id)
                     if "record-kps" in args.opts:
                         kps_3d_list.append(kps_3d_list_i)
 
-            max_range = np.array([x_max - x_min, y_max - y_min, z_max - z_min]).max()
-            Xb = 0.5 * max_range * np.mgrid[-1:2:2, -1:2:2, -1:2:2][0].flatten() + 0.5 * (x_max + x_min)
-            Yb = 0.5 * max_range * np.mgrid[-1:2:2, -1:2:2, -1:2:2][1].flatten() + 0.5 * (y_max + y_min)
-            Zb = 0.5 * max_range * np.mgrid[-1:2:2, -1:2:2, -1:2:2][2].flatten() + 0.5 * (z_max + z_min)
-            # Comment or uncomment following both lines to test the fake bounding box:
-            for xb, yb, zb in zip(*[[Xb, Yb, Zb][idx] for idx in I]):
-               ax.plot([xb], [yb], [zb], 'w')
+            if "no-plot" not in args.opts:
+                max_range = np.array([x_max - x_min, y_max - y_min, z_max - z_min]).max()
+                Xb = 0.5 * max_range * np.mgrid[-1:2:2, -1:2:2, -1:2:2][0].flatten() + 0.5 * (x_max + x_min)
+                Yb = 0.5 * max_range * np.mgrid[-1:2:2, -1:2:2, -1:2:2][1].flatten() + 0.5 * (y_max + y_min)
+                Zb = 0.5 * max_range * np.mgrid[-1:2:2, -1:2:2, -1:2:2][2].flatten() + 0.5 * (z_max + z_min)
+                # Comment or uncomment following both lines to test the fake bounding box:
+                for xb, yb, zb in zip(*[[Xb, Yb, Zb][idx] for idx in I]):
+                    ax.plot([xb], [yb], [zb], 'w')
 
-            # Draw camera
-            kwargs = {
-                'color': 'grey',
-                'markerfacecolor': 'k',
-                'markeredgecolor': 'k',
-                'marker': 'o',
-                'markersize': 5,
-                'alpha': 0.6,
-            }
-            p = qv_mult((qw, qx, qy, qz), np.array([tx - cx, ty - cy, tz + fx]))
-            t = [tx, ty, tz]
-            ax.plot([t[I[0]], p[I[0]]], [t[I[1]], p[I[1]]], [t[I[2]], p[I[2]]], **kwargs)
-            p = qv_mult((qw, qx, qy, qz), np.array([t[I[0]] + cx, t[I[1]] - cy, t[I[2]] + fx]))
-            ax.plot([t[I[0]], p[I[0]]], [t[I[1]], p[I[1]]], [t[I[2]], p[I[2]]], **kwargs)
-            p = qv_mult((qw, qx, qy, qz), np.array([t[I[0]] - cx, t[I[1]] + cy, t[I[2]] + fx]))
-            ax.plot([t[I[0]], p[I[0]]], [t[I[1]], p[I[1]]], [t[I[2]], p[I[2]]], **kwargs)
-            p = qv_mult((qw, qx, qy, qz), np.array([t[I[0]] + cx, t[I[1]] + cy, t[I[2]] + fx]))
-            ax.plot([t[I[0]], p[I[0]]], [t[I[1]], p[I[1]]], [t[I[2]], p[I[2]]], **kwargs)
+                # Draw camera
+                kwargs = {
+                    'color': 'grey',
+                    'markerfacecolor': 'k',
+                    'markeredgecolor': 'k',
+                    'marker': 'o',
+                    'markersize': 5,
+                    'alpha': 0.6,
+                }
+                p = qv_mult((qw, qx, qy, qz), np.array([tx - cx, ty - cy, tz + fx]))
+                t = [tx, ty, tz]
+                ax.plot([t[I[0]], p[I[0]]], [t[I[1]], p[I[1]]], [t[I[2]], p[I[2]]], **kwargs)
+                p = qv_mult((qw, qx, qy, qz), np.array([t[I[0]] + cx, t[I[1]] - cy, t[I[2]] + fx]))
+                ax.plot([t[I[0]], p[I[0]]], [t[I[1]], p[I[1]]], [t[I[2]], p[I[2]]], **kwargs)
+                p = qv_mult((qw, qx, qy, qz), np.array([t[I[0]] - cx, t[I[1]] + cy, t[I[2]] + fx]))
+                ax.plot([t[I[0]], p[I[0]]], [t[I[1]], p[I[1]]], [t[I[2]], p[I[2]]], **kwargs)
+                p = qv_mult((qw, qx, qy, qz), np.array([t[I[0]] + cx, t[I[1]] + cy, t[I[2]] + fx]))
+                ax.plot([t[I[0]], p[I[0]]], [t[I[1]], p[I[1]]], [t[I[2]], p[I[2]]], **kwargs)
 
-            labels = ['X', 'Y', 'Z']
-            limits = [[x_min, x_max], [y_min, y_max], [z_min, z_max]]
-            ax.set_xlabel(labels[I[0]])
-            ax.set_ylabel(labels[I[1]])
-            ax.set_zlabel(labels[I[2]])
-            ax.set_xlim(*limits[I[0]])
-            ax.set_ylim(*limits[I[1]])
-            ax.set_zlim(*limits[I[2]])
+                labels = ['X', 'Y', 'Z']
+                limits = [[x_min, x_max], [y_min, y_max], [z_min, z_max]]
+                ax.set_xlabel(labels[I[0]])
+                ax.set_ylabel(labels[I[1]])
+                ax.set_zlabel(labels[I[2]])
+                ax.set_xlim(*limits[I[0]])
+                ax.set_ylim(*limits[I[1]])
+                ax.set_zlim(*limits[I[2]])
 
-        img = np.array((depth_img.T, depth_img.T, depth_img.T)).T.astype(np.float32)
-        img /= np.max(img)
-        rgb_kps_img = rgb_kps_img.astype(np.float32) / 255
-        img = np.hstack((img, rgb_kps_img))
-
-        plt.pause(0.05)
-        fig.savefig(os.path.join(args.datadir, 'plt', '{}.png'.format(i)), bbox_inches='tight', dpi=fig.dpi)
+        # Uncomment to get rgb with detections and depth visualizations
+        #img = np.array((depth_img.T, depth_img.T, depth_img.T)).T.astype(np.float32)
+        #img /= np.max(img)
+        #rgb_kps_img = rgb_kps_img.astype(np.float32) / 255
+        #img = np.hstack((img, rgb_kps_img))
+        if "no-plot" not in args.opts:
+            plt.pause(0.05)
+            fig.savefig(os.path.join(args.datadir, 'plt', '{}.png'.format(i)), bbox_inches='tight', dpi=fig.dpi)
         if 'auto-play' not in args.opts:
             raw_input()
 

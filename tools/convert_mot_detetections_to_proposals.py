@@ -76,7 +76,7 @@ def mot_detections_to_proposals(det_path):
 
 
 if __name__ == '__main__':
-    from detectron.datasets.dataset_catalog import _mot_test_sequence_idx, _mot_detectors
+    from detectron.datasets.dataset_catalog import _mot_test_sequence_idx, _mot_train_sequence_idx, _mot_detectors
 
     args = parse_args()
     # Iterate through all detectors and sequences

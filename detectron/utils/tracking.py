@@ -235,7 +235,7 @@ def infer_track_sequence(model, im_dir, tracking, proposals=None, vis=None, det_
     im_names = os.listdir(im_dir)
     assert len(im_names) > 1, "Sequence must contain > 1 images"
     im_names.sort()
-    # im_names.sort(key=lambda el: int(el.split('-')[1])) # alternative sorting
+    im_names.sort(key=lambda el: int(el.split('-')[1])) # alternative sorting
     im_paths = [os.path.join(im_dir, im_name) for im_name in im_names]
     im_names = [".".join(im_name.split(".")[:-1]) for im_name in im_names]
 
@@ -251,6 +251,7 @@ def infer_track_sequence(model, im_dir, tracking, proposals=None, vis=None, det_
             im = cv2.imread(im_path)
             with c2_utils.NamedCudaScope(0):
                 proposal_boxes = proposals and proposals['boxes'][i]
+                # Single image detections on first frame
                 if i == 0:
                     cls_boxes_list, cls_segms_list, cls_keyps_list, track_mat, extras = multi_im_detect_all(
                         model,
@@ -262,6 +263,7 @@ def infer_track_sequence(model, im_dir, tracking, proposals=None, vis=None, det_
                     cls_boxes = cls_boxes_list[0]
                     cls_segms = cls_segms_list[0]
                     cls_keyps = cls_keyps_list[0]
+                # Sequential detections after the first frame
                 else:
                     timers = defaultdict(Timer)
                     timers = None

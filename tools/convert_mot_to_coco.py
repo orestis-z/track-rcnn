@@ -14,7 +14,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description='Convert dataset')
     parser.add_argument(
         '--dataset-dir',
-        dest='dataset_dir'
+        dest='dataset_dir',
         help="Directory of the MOT dataset",
         default=None,
         type=str

@@ -89,6 +89,11 @@ def parse_args():
         default="iter",
         type=str,
     )
+    parser.add_argument(
+        'opts',
+        default=[],
+        nargs=argparse.REMAINDER
+    )
     if len(sys.argv) == 1:
         parser.print_help()
         sys.exit(1)
@@ -155,7 +160,7 @@ def main(args):
             ax = fig.add_subplot(subplot_shape[0], subplot_shape[1],
                 i - exc_c + 1)
             # No smoothing
-            if smooth_sigma == 0:
+            if args.smooth_sigma == 0:
                 ax.plot(t, res[i], color=colors[j], lw=lw, label=labels[j])
             # Gaussian smoothing
             else:
@@ -174,7 +179,7 @@ def main(args):
         ax.legend()
         ax.set_ylabel("[{}]".format(key[2]), rotation=0, labelpad=20)
         ax.set_xlabel(args.x_label)
-        if opts.scientific:
+        if "scientific" in args.opts:
             ax.ticklabel_format(style='sci', axis='x', scilimits=(0,0))
         ax.grid()
     # Plot adjustments
