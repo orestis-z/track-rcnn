@@ -271,7 +271,8 @@ def main(args):
             rgb_data = [(float(timestamp) / 1000 / 1000, os.path.join(args.datadir, 'rgb/r-{}-{}.png'.format(
                 timestamp, data['imageFrameID'][i]))) for i, timestamp in enumerate(data['imageTimestamp'])]
             depth_t_list = [float(timestamp) / 1000 / 1000 for timestamp in data['depthTimestamp']]
-            depth_path_list = [os.path.join(args.datadir, 'depth/d-{}-{}.png'.format(timestamp, data['depthFrameID'][i])) for i, timestamp in enumerate(data['depthTimestamp'])]
+            depth_path_list = [os.path.join(args.datadir, 'depth/d-{}-{}.png'.format(
+                timestamp, data['depthFrameID'][i])) for i, timestamp in enumerate(data['depthTimestamp'])]
 
     if args.mode in [1, 2]:
         all_dets = pickle.load(open(os.path.join(args.datadir, "detections.pkl")))
@@ -355,7 +356,9 @@ def main(args):
                 Z = mesh[:, :, 2]
 
                 # 3D scatter plot of pointcloud including rgb colors
-                ax.scatter(X.flatten(), Y.flatten(), Z.flatten(), c=rgb_small[...,::-1].reshape(Z.shape[0] * Z.shape[1], 3), s=np.sqrt(shrink_factor))
+                ax.scatter(X.flatten(), Y.flatten(), Z.flatten(),
+                    c=rgb_small[...,::-1].reshape(Z.shape[0] * Z.shape[1], 3),
+                    s=np.sqrt(shrink_factor))
             if args.mode in [1, 2]:
                 if kps_3d_arr is not None:
                     dets = kps_3d_arr[i]
@@ -364,7 +367,13 @@ def main(args):
                         vis_keypoints_3d(ax, kps_3d, valid_3d, obj_id)
                 else:
                     # 2d -> 3d world coords map
-                    p_map = lambda p: cam_to_world((qw, qx, qy, qz), np.array([tx, ty, tz]), np.array(plane_to_cam(p / shrink_factor, medfilt2d(depth_small, args.k_size) / factor, (fx, cx, fy, cy), shrink_factor)))
+                    p_map = lambda p: cam_to_world(
+                        (qw, qx, qy, qz),
+                        np.array([tx, ty, tz]),
+                        np.array(plane_to_cam(
+                            p / shrink_factor,
+                            medfilt2d(depth_small, args.k_size) / factor,
+                            (fx, cx, fy, cy), shrink_factor)))
                     kps_3d_list_i = []
                     for det in all_dets[i]:
                         obj_id = det[1]
