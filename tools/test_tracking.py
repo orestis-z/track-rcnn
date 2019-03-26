@@ -212,9 +212,8 @@ def main(args):
         if EVAL and (i + 1 + args.offset) % (args.skip + 1) != 0:
             logger.info("Skipping {}".format(model))
             continue
-        else:
-            # Hyper parameter inference
-            if HYPER_PARAM is not None:
+        # Hyper parameter inference
+        elif HYPER_PARAM is not None:
                 cfg.immutable(False)
                 setattr(cfg.TRCNN, HYPER_PARAM, param)
                 assert_and_infer_cfg(cache_urls=False)
