@@ -207,3 +207,11 @@ for seq in "02" "04" "05" "09" "10" "11" "13"; do
     python tools/save_blobs.py --wts path/to/weights.pkl --cfg path/to/cfg.yaml --blobs [blob-list] --output-dir path/to/output/${seq}/ --dataset mot17_train_frcnn_${seq}
 done;
 ```
+
+### Unit Tests
+
+Test tracking specific operations, losses and outputs with:
+
+```
+python detectron/tests/${test}.py
+```
