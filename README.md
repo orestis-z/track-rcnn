@@ -1,115 +1,234 @@
-# Detectron
+# Track R-CNN
 
-Detectron is Facebook AI Research's software system that implements state-of-the-art object detection algorithms, including [Mask R-CNN](https://arxiv.org/abs/1703.06870). It is written in Python and powered by the [Caffe2](https://github.com/caffe2/caffe2) deep learning framework.
+End-to-end multitask CNN architecture for object instance segmentation, human pose detection and multi-person tracking based on Facebook AI's [Detectron](https://github.com/facebookresearch/Detectron/) system. This framework was developed as part of Orestis Zambounis' Master Thesis _Multitask CNN
+Architecture for Online 3D Human Pose Estimation and Multi-person
+Tracking_.
 
-At FAIR, Detectron has enabled numerous research projects, including: [Feature Pyramid Networks for Object Detection](https://arxiv.org/abs/1612.03144), [Mask R-CNN](https://arxiv.org/abs/1703.06870), [Detecting and Recognizing Human-Object Interactions](https://arxiv.org/abs/1704.07333), [Focal Loss for Dense Object Detection](https://arxiv.org/abs/1708.02002), [Non-local Neural Networks](https://arxiv.org/abs/1711.07971), [Learning to Segment Every Thing](https://arxiv.org/abs/1711.10370), [Data Distillation: Towards Omni-Supervised Learning](https://arxiv.org/abs/1712.04440), [DensePose: Dense Human Pose Estimation In The Wild](https://arxiv.org/abs/1802.00434), and [Group Normalization](https://arxiv.org/abs/1803.08494).
+Links: [Presentation](https://drive.google.com/file/d/1z60jBVn4TXqyzy73GIYFjbiFG_i0h1pX/view?usp=sharing), [Report](https://drive.google.com/file/d/1JowSPwsx_-GFVdufEHyK6bJdPH2bveiT/view?usp=sharing)
+
+In the following we provide important command line snippets for
+training, validation and inference as a starting point to familiarize
+with our extension to the original [Detectron](https://github.com/facebookresearch/Detectron/) framework.
+
+Please refer to Detectron's original [README](https://github.com/facebookresearch/Detectron/README.md) for setup instructions and more.
 
 <div align="center">
-  <img src="demo/output/33823288584_1d21cf0a26_k_example_output.jpg" width="700px" />
-  <p>Example Mask R-CNN output.</p>
+  <img src="demo/track.png" width="700px" />
+  <p>Example multi-task output.</p>
 </div>
 
-## Introduction
+## Getting Started
 
-The goal of Detectron is to provide a high-quality, high-performance
-codebase for object detection *research*. It is designed to be flexible in order
-to support rapid implementation and evaluation of novel research. Detectron
-includes implementations of the following object detection algorithms:
+### Dataset
 
-- [Mask R-CNN](https://arxiv.org/abs/1703.06870) -- *Marr Prize at ICCV 2017*
-- [RetinaNet](https://arxiv.org/abs/1708.02002) -- *Best Student Paper Award at ICCV 2017*
-- [Faster R-CNN](https://arxiv.org/abs/1506.01497)
-- [RPN](https://arxiv.org/abs/1506.01497)
-- [Fast R-CNN](https://arxiv.org/abs/1504.08083)
-- [R-FCN](https://arxiv.org/abs/1605.06409)
+The MOT17 Benchmark dataset (or a symlink to it) has to be placed
+under `detectron/datasets/data`
 
-using the following backbone network architectures:
-
-- [ResNeXt{50,101,152}](https://arxiv.org/abs/1611.05431)
-- [ResNet{50,101,152}](https://arxiv.org/abs/1512.03385)
-- [Feature Pyramid Networks](https://arxiv.org/abs/1612.03144) (with ResNet/ResNeXt)
-- [VGG16](https://arxiv.org/abs/1409.1556)
-
-Additional backbone architectures may be easily implemented. For more details about these models, please see [References](#references) below.
-
-## Update
-
-- 4/2018: Support Group Normalization - see [`GN/README.md`](./projects/GN/README.md)
-
-## License
-
-Detectron is released under the [Apache 2.0 license](https://github.com/facebookresearch/detectron/blob/master/LICENSE). See the [NOTICE](https://github.com/facebookresearch/detectron/blob/master/NOTICE) file for additional details.
-
-## Citing Detectron
-
-If you use Detectron in your research or wish to refer to the baseline results published in the [Model Zoo](MODEL_ZOO.md), please use the following BibTeX entry.
+Next, we need to convert the MOT ground-truth annotations to a COCO
+compatible format:
 
 ```
-@misc{Detectron2018,
-  author =       {Ross Girshick and Ilija Radosavovic and Georgia Gkioxari and
-                  Piotr Doll\'{a}r and Kaiming He},
-  title =        {Detectron},
-  howpublished = {\url{https://github.com/facebookresearch/detectron}},
-  year =         {2018}
-}
+python tools/convert_mot_to_coco.py --dataset-dir path/to/MOT17/dataset
 ```
 
-## Model Zoo and Baselines
+If we want to use the proposals provided by the benchmark we need to convert those to a COCO
+compatible format using:
 
-We provide a large set of baseline results and trained models available for download in the [Detectron Model Zoo](MODEL_ZOO.md).
+```
+python tools/convert_mot_detetections_to_proposals.py --dataset-dir path/to/MOT17/dataset
+```
 
-## Installation
+### Matlab Engine
 
-Please find installation instructions for Caffe2 and Detectron in [`INSTALL.md`](INSTALL.md).
+In order to run evaluations in python with the provided MOT devkit we need
+to install the matlab engine for python. Follow the official instructions at [www.mathworks.com/help/matlab/matlab_external/install-the-matlab-engine-for-python.html](https://www.mathworks.com/help/matlab/matlab_external/install-the-matlab-engine-for-python.html).
 
-## Quick Start: Using Detectron
+### c2board
 
-After installation, please see [`GETTING_STARTED.md`](GETTING_STARTED.md) for brief tutorials covering inference and training with Detectron.
+We can use tensorboard to visualize our training progress. For this we need
+to install c2board. Follow the official instructions at [github.com/endernewton/c2board](https://github.com/endernewton/c2board).
 
-## Getting Help
+## Training
 
-To start, please check the [troubleshooting](INSTALL.md#troubleshooting) section of our installation instructions as well as our [FAQ](FAQ.md). If you couldn't find help there, try searching our GitHub issues. We intend the issues page to be a forum in which the community collectively troubleshoots problems.
+### Config
 
-If bugs are found, **we appreciate pull requests** (including adding Q&A's to `FAQ.md` and improving our installation instructions and troubleshooting documents). Please see [CONTRIBUTING.md](CONTRIBUTING.md) for more information about contributing to Detectron.
+Set both `MODEL.FASTER_RCNN` and `MODEL.RPN_ONLY` to `True` if training exclusively for tracking. This
+will disable class and bounding box regression training. We can
+further disable RPN and Faster R-CNN losses by setting `RPN.LOSS_ON`
+and `FAST_RCNN.LOSS_ON` to `False`.
 
-## References
+### Run training
 
-- [Data Distillation: Towards Omni-Supervised Learning](https://arxiv.org/abs/1712.04440).
-  Ilija Radosavovic, Piotr Dollár, Ross Girshick, Georgia Gkioxari, and Kaiming He.
-  Tech report, arXiv, Dec. 2017.
-- [Learning to Segment Every Thing](https://arxiv.org/abs/1711.10370).
-  Ronghang Hu, Piotr Dollár, Kaiming He, Trevor Darrell, and Ross Girshick.
-  Tech report, arXiv, Nov. 2017.
-- [Non-Local Neural Networks](https://arxiv.org/abs/1711.07971).
-  Xiaolong Wang, Ross Girshick, Abhinav Gupta, and Kaiming He.
-  Tech report, arXiv, Nov. 2017.
-- [Mask R-CNN](https://arxiv.org/abs/1703.06870).
-  Kaiming He, Georgia Gkioxari, Piotr Dollár, and Ross Girshick.
-  IEEE International Conference on Computer Vision (ICCV), 2017.
-- [Focal Loss for Dense Object Detection](https://arxiv.org/abs/1708.02002).
-  Tsung-Yi Lin, Priya Goyal, Ross Girshick, Kaiming He, and Piotr Dollár.
-  IEEE International Conference on Computer Vision (ICCV), 2017.
-- [Accurate, Large Minibatch SGD: Training ImageNet in 1 Hour](https://arxiv.org/abs/1706.02677).
-  Priya Goyal, Piotr Dollár, Ross Girshick, Pieter Noordhuis, Lukasz Wesolowski, Aapo Kyrola, Andrew Tulloch, Yangqing Jia, and Kaiming He.
-  Tech report, arXiv, June 2017.
-- [Detecting and Recognizing Human-Object Interactions](https://arxiv.org/abs/1704.07333).
-  Georgia Gkioxari, Ross Girshick, Piotr Dollár, and Kaiming He.
-  Tech report, arXiv, Apr. 2017.
-- [Feature Pyramid Networks for Object Detection](https://arxiv.org/abs/1612.03144).
-  Tsung-Yi Lin, Piotr Dollár, Ross Girshick, Kaiming He, Bharath Hariharan, and Serge Belongie.
-  IEEE Conference on Computer Vision and Pattern Recognition (CVPR), 2017.
-- [Aggregated Residual Transformations for Deep Neural Networks](https://arxiv.org/abs/1611.05431).
-  Saining Xie, Ross Girshick, Piotr Dollár, Zhuowen Tu, and Kaiming He.
-  IEEE Conference on Computer Vision and Pattern Recognition (CVPR), 2017.
-- [R-FCN: Object Detection via Region-based Fully Convolutional Networks](http://arxiv.org/abs/1605.06409).
-  Jifeng Dai, Yi Li, Kaiming He, and Jian Sun.
-  Conference on Neural Information Processing Systems (NIPS), 2016.
-- [Deep Residual Learning for Image Recognition](http://arxiv.org/abs/1512.03385).
-  Kaiming He, Xiangyu Zhang, Shaoqing Ren, and Jian Sun.
-  IEEE Conference on Computer Vision and Pattern Recognition (CVPR), 2016.
-- [Faster R-CNN: Towards Real-Time Object Detection with Region Proposal Networks](http://arxiv.org/abs/1506.01497)
-  Shaoqing Ren, Kaiming He, Ross Girshick, and Jian Sun.
-  Conference on Neural Information Processing Systems (NIPS), 2015.
-- [Fast R-CNN](http://arxiv.org/abs/1504.08083).
-  Ross Girshick.
-  IEEE International Conference on Computer Vision (ICCV), 2015.
+Finally, execute the training with
+
+```
+python tools/train_net.py --cfg path/to/cfg.yaml
+```
+
+### Inspection
+
+Inspect the training progress with tensorboard:
+
+```
+tensorboard --logdir outputs
+```
+
+<div align="center">
+  <img src="demo/tensorboard.png" width="700px" />
+  <p>Example tensorboard visualization.</p>
+</div>
+
+We can further download the tensorboard visualizations as a csv file and plot those with `matplotlib`:
+
+```
+python visualize_tensorboard.py --file path/to/file.csv
+```
+
+## Validation
+
+### Full sequence validation using MOT metrics
+
+Run validation on all the testing sequences specified in `TEST.DATASETS` to
+calculate MOT metrics on all saved models from a specific configuration.
+The following command evaluates the sequences specified in `TEST.DATASETS` by interfacing to the MOT devkit in matlab. When using custom proposals we have to set `MODEL.FASTER_RCNN` to `False` in the configuration file.
+
+```
+python tools/test_tracking.py --cfg path/to/cfg.yaml proposals eval
+```
+
+### MOT metrics visualization
+
+The previous command will write validation results to the evaluation
+directory (`outputs/test/...`) which can be visualized using:
+
+```
+python --pdb tools/visualize_mot_val.py --eval-dir path/to/evaluation/directory
+```
+
+<div align="center">
+  <img src="demo/val.png" width="250px" />
+  <p>Example metric visualization: MOTA over training interation.</p>
+</div>
+
+## Inference
+
+### Config
+
+Set `MODEL.FASTER_RCNN` to `False` if using custom proposals. Set `MODEL.RPN_ONLY` to `False`.
+
+### Custom image sequence
+
+Simple image sequence inference (visualized results in `outputs/infer_track_sequence`):
+
+```
+python tools/infer_track_sequence.py --wts path/to/weights.pkl --cfg path/to/cfg.yaml --im-dir path/to/image/sequence show-track
+```
+
+Isolated image pair object associations (visualized results in `outputs/infer_track_pairs`):
+
+```
+python tools/infer_track_pairs.py --wts path/to/weights.pkl --cfg path/to/cfg.yaml --im-dir path/to/image/sequence show-track
+```
+
+### Multi-task
+
+Merging weights from mulitple files for multi-task inference with a sibling backbone:
+
+```
+python tools/infer_track_sequence.py --wts path/to/weights/tracking.pkl path/to/weights/kps.pkl --cfg path/to/multitask-cfg.yaml --preffixes "" sib --im-dir path/to/image/sequence show-track
+```
+
+<div align="center">
+  <img src="demo/multitask.png" width="400px" />
+  <p>Example of a sibling backbone for human pose keypoints estimation.
+  Additions to the original Mask R-CNN architecture are highlighted in blue.
+  Dotted box / arrow indicates features from the previous frame.
+</p>
+</div>
+
+### Submission
+
+As we are using custom proposals we need to set `MODEL.FASTER_RCNN` to `False` in the configuration file. The following command infers submission results for all the sequences specified in `TEST.DATASETS` and stores the detection files under `outputs/MOT17/`:
+
+```
+python tools/test_tracking.py --cfg path/to/cfg.yaml --model model_iterX.pkl proposals
+```
+
+### 3D Keypoints
+
+The following examples use the _Princeton Tracking Benchmark_
+for 3D human pose inference. ([tracking.cs.princeton.edu/dataset.html](http://tracking.cs.princeton.edu/dataset.html)).
+We define the path to the desired sequence as `PRINCETON_SEQ`.
+
+Uncomment line `238` in `detectron/utils/tracking.py` for custom image sequence sorting for the Princeton Tracking Benchmark.
+Run inference on the image sequence:
+
+```
+python tools/infer_track_sequence.py --wts path/to/weights/tracking.pkl path/to/weights/kps.pkl --cfg path/to/multitask-cfg.yaml --preffixes "" sib --im-dir "${PRINCETON_SEQ}/rgb" --n-colors 2 --output-dir ${PRINCETON_SEQ}/dets --output-file "${PRINCETON_SEQ}/detections.pkl" all-dets show-track
+```
+
+Map keypoints to the depth and transform to world coordinates (saves results to `kps_3d.npy`):
+
+```
+python tools/3D_inference/vis_rgbd.py --datadir "${PRINCETON_SEQ}" --dataset princeton --mode 1 --k-size 1 auto-play record-kps no-plot
+```
+
+Filter keypoints with a median or gaussian filter:
+
+```
+python2 tools/3D_inference/filter_kps.py --kps-3d "${PRINCETON_SEQ}/kps_3d.npy" --output-dir "${PRINCETON_SEQ}" --filter-var 5
+```
+
+Visualize using the filtered keypoints:
+
+```
+python tools/3D_inference/vis_rgbd.py --datadir "${PRINCETON_SEQ}" --dataset princeton --mode 1 --kps-3d "${PRINCETON_SEQ}/kps_3d.npy" auto-play
+```
+
+<div align="center">
+  <img src="demo/259.png" width="700px" />
+  <p>Example 3D world-frame mapping of the human pose keypoints.</p>
+</div>
+
+## Other
+
+### Network graph visualization
+
+Simple:
+
+```
+python tools/visualize_net.py --cfg path/to/cfg.yaml
+```
+
+Include blob shapes:
+
+```
+python tools/visualize_net.py --cfg path/to/cfg.yaml --model path/to/weights.pkl shapes
+```
+
+<div align="center">
+  <img src="demo/graph.png" width="500px" />
+  <p>Excerpt from an example of a network graph visualization
+  of the architecture in training mode.</p>
+</div>
+
+### Pre-compute blobs
+
+Save selected blobs to storage to possibly speed up training time.
+Please refer to the following issue fist before considering using this script: [github.com/facebookresearch/Detectron/issues/808](https://github.com/facebookresearch/Detectron/issues/808).
+
+Adapted from `scripts/save_tracking_blobs.sh`:
+
+```
+for seq in "02" "04" "05" "09" "10" "11" "13"; do
+    python tools/save_blobs.py --wts path/to/weights.pkl --cfg path/to/cfg.yaml --blobs [blob-list] --output-dir path/to/output/${seq}/ --dataset mot17_train_frcnn_${seq}
+done;
+```
+
+### Unit Tests
+
+Test tracking specific operations, losses and outputs with:
+
+```
+python detectron/tests/${test}.py
+```
